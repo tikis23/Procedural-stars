@@ -1,0 +1,12 @@
+#version 330 core
+
+layout(location = 0) in vec4 in_position;
+
+uniform mat4 projection;
+uniform mat4 view;
+//uniform mat4 model;
+
+void main() {
+	mat4 MVP = projection * view;
+    gl_Position = MVP * vec4(in_position.xyz, 1);
+}
