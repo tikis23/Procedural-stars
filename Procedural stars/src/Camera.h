@@ -7,10 +7,10 @@ public:
 	struct CameraParameters {
 		float fov = 60.0f;
 		float planeNear = 0.1f;
-		float planeFar = 1000.0f;
+		float planeFar = 10000000.0f;
 	};
 
-	Camera(CameraParameters params, float aspectRatio, glm::vec3 position, glm::vec3 rotation);
+	Camera(CameraParameters params, glm::vec3 position, glm::vec3 rotation);
 	~Camera();
 
 	void UpdateInput(Window* window);
@@ -20,8 +20,8 @@ public:
 	void SetRotation(glm::vec3 rotation);
 	glm::vec3 GetRotation() { return m_rotation; };
 
-	void Update();
-	void SetParameters(CameraParameters params, float aspectRatio);
+	void Update(float aspectRatio);
+	void SetParameters(CameraParameters params);
 
 	glm::mat4& GetView() { return m_view; };
 	glm::mat4& GetProjection() { return m_projection; };

@@ -17,10 +17,13 @@ Window::Window(WindowParameters params) {
 		m_handle = glfwCreateWindow(m_parameters.windowWidth, m_parameters.windowHeight, m_parameters.title.c_str(), NULL, NULL);
 	glfwSetWindowPos(m_handle, m_parameters.windowPosX, m_parameters.windowPosY);
 	glfwSetFramebufferSizeCallback(m_handle, FramebufferCallback);
+	glfwSetWindowPosCallback(m_handle, WindowPosCallback);
 	Init(m_handle);
+	sm_windows[m_handle] = this;
 }
 Window::~Window() {
 	glfwDestroyWindow(m_handle);
+	sm_windows.erase(m_handle);
 }
 
 void Window::MakeContextCurrent() {
@@ -34,5 +37,21 @@ void Window::Update() {
 }
 
 void Window::FramebufferCallback(GLFWwindow* window, int width, int height) {
+	glfwMakeContextCurrent(window);
 	glViewport(0, 0, width, height);
+	Window* win = sm_windows.at(window);
+	if (win == nullptr)
+		return;
+	win->m_parameters.windowWidth = width;
+	win->m_parameters.windowHeight = height;
 }
+
+void Window::WindowPosCallback(GLFWwindow* window, int xpos, int ypos) {
+	Window* win = sm_windows.at(window);
+	if (win == nullptr)
+		return;
+	win->m_parameters.windowPosX = xpos;
+	win->m_parameters.windowPosY = ypos;
+}
+
+std::map<GLFWwindow*, Window*> Window::sm_windows;

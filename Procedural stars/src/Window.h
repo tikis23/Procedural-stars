@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <cstdint>
 #include <string>
+#include <map>
 
 #include "Input.h"
 
@@ -29,10 +30,15 @@ public:
 	GLFWwindow* Handle() { return m_handle; };
 	std::uint32_t GetWidth() { return m_parameters.windowWidth; };
 	std::uint32_t GetHeight() { return m_parameters.windowHeight; };
-	float GetAspectRatio() { return m_parameters.windowWidth / m_parameters.windowHeight; };
+	std::int32_t GetPositionX() { return m_parameters.windowPosX; };
+	std::int32_t GetPositionY() { return m_parameters.windowPosY; };
+	float GetAspectRatio() { return (float)m_parameters.windowWidth / m_parameters.windowHeight; };
 private:
 	static void FramebufferCallback(GLFWwindow* window, int width, int height);
+	static void WindowPosCallback(GLFWwindow* window, int xpos, int ypos);
 
 	GLFWwindow* m_handle;
 	WindowParameters m_parameters;
+
+	static std::map<GLFWwindow*, Window*> sm_windows;
 };
