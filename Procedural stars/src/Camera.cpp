@@ -96,7 +96,7 @@ void Camera::Update(float aspectRatio) {
     if (ImGui::Begin("Settings")) {
         if (ImGui::BeginTabBar("")) {
             if (ImGui::BeginTabItem("Info")) {
-                ImGui::Text(std::format("Camera position: (%f, %f, %f)", m_position.x, m_position.y, m_position.z).c_str());
+                ImGui::Text(std::format("Camera position: ({}, {}, {})", m_position.x, m_position.y, m_position.z).c_str());
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Camera")) {

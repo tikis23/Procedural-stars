@@ -20,6 +20,7 @@ public:
 		std::uint32_t windowHeight = 400;
 		std::int32_t windowPosX = 100;
 		std::int32_t windowPosY = 100;
+		bool iconified = false;
 		bool resizeable = false;
 	};
 
@@ -33,9 +34,11 @@ public:
 	std::int32_t GetPositionX() { return m_parameters.windowPosX; };
 	std::int32_t GetPositionY() { return m_parameters.windowPosY; };
 	float GetAspectRatio() { return (float)m_parameters.windowWidth / m_parameters.windowHeight; };
+	bool IsIconified() { return m_parameters.iconified; };
 private:
 	static void FramebufferCallback(GLFWwindow* window, int width, int height);
 	static void WindowPosCallback(GLFWwindow* window, int xpos, int ypos);
+	static void WindowIconifyCallback(GLFWwindow* window, int iconified);
 
 	GLFWwindow* m_handle;
 	WindowParameters m_parameters;

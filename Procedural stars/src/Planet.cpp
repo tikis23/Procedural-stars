@@ -1,78 +1,65 @@
 #include "Planet.h"
 #include <iostream>
 #include "imgui/imgui.h"
-Planet::Planet(Camera* cam) {
-	m_meshes.push_back({});
-
-	std::vector<Vertex>* data = m_meshes.back().GetVertexData();
-	for (int i = -50; i < 50; i++) {
-		for (int j = -50; j < 50; j++) {
-			float x = (float)i / 50;
-			float y = (float)j / 50;
-			float intarpas = (float)1 / 50;
-			data->push_back({ {x		 , y		 , 0} });
-			data->push_back({ {x+intarpas, y+intarpas, 0} });
-			data->push_back({ {x+intarpas, y		 , 0} });
-			data->push_back({ {x		 , y		 , 0} });
-			data->push_back({ {x		 , y+intarpas, 0} });
-			data->push_back({ {x+intarpas, y+intarpas, 0} });
+#include "glm/ext/matrix_transform.hpp"
+#include <GLFW/glfw3.h>
+Planet::Planet() {
+	if (m_meshes.empty()) {
+		int lods = 16;
+		for (int l = 1; l <= lods; l++) {
+			m_meshes.push_back(new Mesh);
+			std::vector<Vertex>* data = m_meshes.back()->GetVertexData();
+			int detail = 500 / std::max(l*l*0.25f, 1.0f);
+			for (int i = -detail; i < detail; i++) {
+				for (int j = -detail; j < detail; j++) {
+					float x = (float)i / detail;
+					float y = (float)j / detail;
+					float intarpas = (float)1 / detail;
+					data->push_back({ {x		 , y		 , 0} });
+					data->push_back({ {x + intarpas, y + intarpas, 0} });
+					data->push_back({ {x + intarpas, y		 , 0} });
+					data->push_back({ {x		 , y		 , 0} });
+					data->push_back({ {x		 , y + intarpas, 0} });
+					data->push_back({ {x + intarpas, y + intarpas, 0} });
+				}
+			}
+			m_meshes.back()->Buffer();
 		}
 	}
+}
 
-	static float z = 1.0f;
-	static float r = 10.0f;
-	static int n = 4;
+Planet::~Planet() {
 
-	// z offset
-	float R = r + z;
-	float d = glm::length(cam->GetPosition());
-	float h = sqrtf(d * d - r * r);
-	float s = sqrtf(R * R - r * r);
-	float zs = (R * R + d * d - (h + s) * (h + s)) / (2 * r * (h + s));
+}
 
-	// face camera
-	glm::vec3 b = glm::normalize(cam->GetPosition() + glm::vec3{1, 0, 0});
-	b = { 0, 0, 1 };
-	glm::vec3 w = glm::normalize(cam->GetPosition());
-	glm::vec3 v = glm::normalize(glm::cross(w, b));
-	glm::vec3 u = glm::cross(w, v);
-	glm::mat3 Rm = glm::mat3(u, v, w);
-
-	//std::cout << d << " " << " " << h << " " << s << " " << zs << '\n';
-
-	for (int i = 0; i < data->size(); i++) {
-		glm::vec3 g = data->at(i).position;
-		g.z = (1 - pow(data->at(i).position.x, n)) * (1 - pow(data->at(i).position.y, n)) + zs;
-		//g = Rm * g;
-
-
-		glm::vec3 o;
-		o.x = g.x * u.x + g.y * v.x + g.z * w.x;
-		o.y = g.x * u.y + g.y * v.y + g.z * w.y;
-		o.z = g.x * u.z + g.y * v.z + g.z * w.z;
-
-		g = o;
-
-
-		data->at(i).position = glm::normalize(g) * r;
-	}
-
-
+void Planet::Update() {
+	static float z = 40.0f;
+	static float r = 200.0f;
+	static float k = 0;
 	if (ImGui::Begin("Settings")) {
 		if (ImGui::BeginTabBar("")) {
 			if (ImGui::BeginTabItem("debug")) {
 				ImGui::DragFloat("z", &z, 0.01f);
 				ImGui::DragFloat("r", &r, 0.1f);
-				ImGui::DragInt("n", &n);
+				ImGui::DragFloat("k", &k, 1.f);
 				ImGui::EndTabItem();
 			}
 			ImGui::EndTabBar();
 		}
 	}
 	ImGui::End();
+	//m_position = { 0 * sin(glfwGetTime()) * 200, 0, 0 };
+	//m_rotation = { 0 * sin(glfwGetTime() * 0.07) * 360, 0, 0 };
+	m_radius = r;
+	m_radiusMax = r + z;
 
-	m_meshes.back().Buffer();
+	m_modelPos = glm::mat4(1);
+	m_modelPos = glm::translate(m_modelPos, m_position);
+
+	m_modelRot = glm::mat4(1);
+	m_modelRot = glm::rotate(m_modelRot, glm::radians(m_rotation.x), glm::vec3(1, 0, 0));
+	m_modelRot = glm::rotate(m_modelRot, glm::radians(m_rotation.y), glm::vec3(0, 1, 0));
+	m_modelRot = glm::rotate(m_modelRot, glm::radians(m_rotation.z), glm::vec3(0, 0, 1));
 }
 
-Planet::~Planet() {
-}
+std::vector<Mesh*> Planet::m_meshes;

@@ -18,7 +18,10 @@ Window::Window(WindowParameters params) {
 	glfwSetWindowPos(m_handle, m_parameters.windowPosX, m_parameters.windowPosY);
 	glfwSetFramebufferSizeCallback(m_handle, FramebufferCallback);
 	glfwSetWindowPosCallback(m_handle, WindowPosCallback);
+	glfwSetWindowIconifyCallback(m_handle, WindowIconifyCallback);
 	Init(m_handle);
+	if (m_parameters.iconified)
+		glfwIconifyWindow(m_handle);
 	sm_windows[m_handle] = this;
 }
 Window::~Window() {
@@ -52,6 +55,13 @@ void Window::WindowPosCallback(GLFWwindow* window, int xpos, int ypos) {
 		return;
 	win->m_parameters.windowPosX = xpos;
 	win->m_parameters.windowPosY = ypos;
+}
+
+void Window::WindowIconifyCallback(GLFWwindow* window, int iconified) {
+	Window* win = sm_windows.at(window);
+	if (win == nullptr)
+		return;
+	win->m_parameters.iconified = iconified;
 }
 
 std::map<GLFWwindow*, Window*> Window::sm_windows;

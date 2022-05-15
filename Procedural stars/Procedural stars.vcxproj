@@ -185,9 +185,12 @@
     <ClInclude Include="src\Window.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="res\shaders\main.fragment" />
-    <None Include="res\shaders\main.geometry" />
-    <None Include="res\shaders\main.vertex" />
+    <None Include="res\shaders\ocean.fragment" />
+    <None Include="res\shaders\ocean.geometry" />
+    <None Include="res\shaders\ocean.vertex" />
+    <None Include="res\shaders\terrain.fragment" />
+    <None Include="res\shaders\terrain.geometry" />
+    <None Include="res\shaders\terrain.vertex" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

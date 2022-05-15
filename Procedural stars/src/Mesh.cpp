@@ -3,7 +3,6 @@
 Mesh::Mesh() {
 	glGenBuffers(1, &m_VBO);
 	glGenVertexArrays(1, &m_VAO);
-	m_model = glm::mat4(1);
 }
 
 Mesh::~Mesh() {

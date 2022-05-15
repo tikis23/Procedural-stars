@@ -5,6 +5,8 @@
 #include <sstream>
 #include <fstream>
 
+#include "glm/glm.hpp"
+
 class Shader {
 public:
 	Shader() {
@@ -63,6 +65,9 @@ public:
 	}
 	void uniform3f(const std::string& location, float value_1, float value_2, float value_3) const {
 		glUniform3f(glGetUniformLocation(id, location.c_str()), value_1, value_2, value_3);
+	}
+	void uniform3f(const std::string& location, glm::vec3 value) const {
+		glUniform3f(glGetUniformLocation(id, location.c_str()), value.x, value.y, value.z);
 	}
 	void uniform4f(const std::string& location, float value_1, float value_2, float value_3, float value_4) const {
 		glUniform4f(glGetUniformLocation(id, location.c_str()), value_1, value_2, value_3, value_4);

@@ -121,8 +121,11 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="res\shaders\main.vertex" />
-    <None Include="res\shaders\main.fragment" />
-    <None Include="res\shaders\main.geometry" />
+    <None Include="res\shaders\terrain.vertex" />
+    <None Include="res\shaders\terrain.fragment" />
+    <None Include="res\shaders\terrain.geometry" />
+    <None Include="res\shaders\ocean.geometry" />
+    <None Include="res\shaders\ocean.vertex" />
+    <None Include="res\shaders\ocean.fragment" />
   </ItemGroup>
 </Project>

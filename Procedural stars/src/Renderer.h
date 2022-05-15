@@ -11,7 +11,8 @@ public:
 private:
 	void LoadShaders();
 
-	std::shared_ptr<Shader> m_mainShader;
+	std::shared_ptr<Shader> m_terrainShader;
+	std::shared_ptr<Shader> m_oceanShader;
 
 	bool m_showNormals = false;
 	bool m_showWireframe = false;

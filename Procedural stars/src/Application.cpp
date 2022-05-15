@@ -73,11 +73,12 @@ bool Application::Init()
 bool Application::Start()
 {
     m_running = true;
-    Camera cam({}, {0.0f, 0.0f, 40.0f}, {0.0f, 0.0f, 0.0f});
+    Camera cam({}, {0.0f, 0.0f, 300.0f}, {0.0f, 0.0f, 0.0f});
     while (m_running) {
         if (glfwWindowShouldClose(m_window->Handle()))
             m_running = false;
         float timerStart = glfwGetTime();
+
         // Start ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -97,15 +98,15 @@ bool Application::Start()
             }
         }
         ImGui::End();
+        if (!m_window->IsIconified()) {
 
-        cam.UpdateInput(m_window.get());
-        cam.Update(m_window->GetAspectRatio());
-
-
-
-        m_renderer->Draw(&cam);
+            cam.UpdateInput(m_window.get());
+            cam.Update(m_window->GetAspectRatio());
 
 
+
+            m_renderer->Draw(&cam);
+        }
         if (ImGui::Begin("Settings", 0)) {
             if (ImGui::BeginTabBar("")) {
                 if (ImGui::BeginTabItem("Info")) {

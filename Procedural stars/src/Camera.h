@@ -6,7 +6,7 @@ public:
 
 	struct CameraParameters {
 		float fov = 60.0f;
-		float planeNear = 0.1f;
+		float planeNear = 10.f;
 		float planeFar = 10000000.0f;
 	};
 
