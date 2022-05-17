@@ -1,0 +1,48 @@
+#version 330
+
+out vec4 fragColor;
+in vec2 texCoord;
+
+
+uniform sampler2D u_texColor;
+uniform sampler2D u_texPosition;
+uniform sampler2D u_texNormal;
+
+uniform vec3 u_cameraPos;
+uniform bool u_showNormals;
+
+void main()
+{
+    //extract fragment data from fbo
+    vec4 color = texture(u_texColor, texCoord);
+    vec3 position = texture(u_texPosition, texCoord).rgb;
+    vec3 normal = texture(u_texNormal, texCoord).rgb;
+    if (normal == vec3(0.0, 0.0, 0.0))
+        discard;
+
+    // variables
+    vec3 lightPos = vec3(0, 0, 0);
+    float ambientStrength = 0.0;
+    float diffuseStrength = 0.8;
+    float specularStrength = 0.2;
+    int shininessStrength = 2;
+
+    // precomputed variables
+    vec3 lightDir = normalize(lightPos - position);
+    vec3 viewDir = normalize(u_cameraPos - position);
+    vec3 halfwayDir = normalize(lightDir + viewDir);  
+
+    // diffuse
+    float diffuse = max(dot(normal, lightDir), 0) * diffuseStrength;
+
+    // specular
+    float specular = 0;
+    if (diffuse > 0)
+        specular = specularStrength * pow(max(dot(normal, halfwayDir), 0.0), shininessStrength);
+
+    vec3 outColor = color.xyz * (ambientStrength + diffuse + specular);
+    
+    fragColor = vec4(outColor, 1.0);
+    if (u_showNormals)
+        fragColor = vec4(normal, 1.0);
+}

@@ -63,6 +63,9 @@
     <ClCompile Include="src\Planet.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Buffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Application.h">
@@ -119,6 +122,9 @@
     <ClInclude Include="src\Planet.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Buffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\terrain.vertex" />
@@ -127,5 +133,7 @@
     <None Include="res\shaders\ocean.geometry" />
     <None Include="res\shaders\ocean.vertex" />
     <None Include="res\shaders\ocean.fragment" />
+    <None Include="res\shaders\lighting.vertex" />
+    <None Include="res\shaders\lighting.fragment" />
   </ItemGroup>
 </Project>

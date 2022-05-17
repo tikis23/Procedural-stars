@@ -4,6 +4,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "imgui/imgui.h"
 #include "Planet.h"
+#include "Buffer.h"
 
 Renderer::Renderer() {
     LoadShaders();
@@ -25,9 +26,14 @@ void Renderer::LoadShaders() {
     m_oceanShader->Load("res/shaders/ocean.geometry", GL_GEOMETRY_SHADER);
     m_oceanShader->Load("res/shaders/ocean.fragment", GL_FRAGMENT_SHADER);
     m_oceanShader->Link();
+
+    m_lightingShader.reset(new Shader);
+    m_lightingShader->Load("res/shaders/lighting.vertex", GL_VERTEX_SHADER);
+    m_lightingShader->Load("res/shaders/lighting.fragment", GL_FRAGMENT_SHADER);
+    m_lightingShader->Link();
 }
 
-void Renderer::Draw(Camera* cam) {
+void Renderer::Draw(Camera* cam, Window* window) {
     // imgui settings
     if (ImGui::Begin("Settings")) {
         if (ImGui::BeginTabBar("")) {
@@ -44,7 +50,10 @@ void Renderer::Draw(Camera* cam) {
         }
     }
     ImGui::End();
- 
+    
+    ///////////////// TEMP SOLUTION
+    static GBuffer gbuffer(window->GetWidth(), window->GetHeight());
+    gbuffer.BindWrite();
     if (m_showWireframe)
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     else
@@ -101,38 +110,58 @@ void Renderer::Draw(Camera* cam) {
 
         // render terrain
         m_terrainShader->Use();
-        m_terrainShader->uniformMatrix4("projection", glm::value_ptr(cam->GetProjection()));
-        m_terrainShader->uniformMatrix4("view", glm::value_ptr(cam->GetView()));
-        m_terrainShader->uniform1i("smoothShading", m_smoothShading);
-        m_terrainShader->uniform1i("u_showNormals", m_showNormals);
-        m_terrainShader->uniform3f("u_cameraPos", cam->GetPosition());
-
+        // vertex uniforms
         m_terrainShader->uniform1f("u_zOffset", zs);
         m_terrainShader->uniform1f("u_r", r);
         m_terrainShader->uniform3f("u_u", u);
         m_terrainShader->uniform3f("u_v", v);
         m_terrainShader->uniform3f("u_w", w);
         m_terrainShader->uniformMatrix4("u_modelRot", glm::value_ptr(planet->GetRotationModelMatrix()));
+        // geometry uniforms
+        m_terrainShader->uniformMatrix4("projection", glm::value_ptr(cam->GetProjection()));
+        m_terrainShader->uniformMatrix4("view", glm::value_ptr(cam->GetView()));
         m_terrainShader->uniformMatrix4("model", glm::value_ptr(planet->GetPositionModelMatrix()));
+        m_terrainShader->uniform1i("smoothShading", m_smoothShading);
 
         meshes[lod]->Draw();
 
         // render ocean
         m_oceanShader->Use();
-        m_oceanShader->uniformMatrix4("projection", glm::value_ptr(cam->GetProjection()));
-        m_oceanShader->uniformMatrix4("view", glm::value_ptr(cam->GetView()));
-        m_oceanShader->uniform1i("smoothShading", m_smoothShading);
-        m_oceanShader->uniform1i("u_showNormals", m_showNormals);
-        m_oceanShader->uniform3f("u_cameraPos", cam->GetPosition());
-
+        // vertex uniforms
         m_oceanShader->uniform1f("u_zOffset", zs);
         m_oceanShader->uniform1f("u_r", r);
         m_oceanShader->uniform3f("u_u", u);
         m_oceanShader->uniform3f("u_v", v);
         m_oceanShader->uniform3f("u_w", w);
         m_oceanShader->uniformMatrix4("u_modelRot", glm::value_ptr(planet->GetRotationModelMatrix()));
+        // geometry uniforms
+        m_oceanShader->uniformMatrix4("projection", glm::value_ptr(cam->GetProjection()));
+        m_oceanShader->uniformMatrix4("view", glm::value_ptr(cam->GetView()));
         m_oceanShader->uniformMatrix4("model", glm::value_ptr(planet->GetPositionModelMatrix()));
+        m_oceanShader->uniform1i("smoothShading", m_smoothShading);
 
         meshes[lod]->Draw();
     }
+    m_lightingShader->Use();
+    gbuffer.BindRead(m_lightingShader.get());
+    static Mesh screenQuad;
+    static bool initQuad = true;
+    if (initQuad) {
+        auto quad = screenQuad.GetVertexData();
+        quad->push_back({ {-1, -1, 0} });
+        quad->push_back({ {-1, 1, 0} });
+        quad->push_back({ {1, 1, 0} });
+        quad->push_back({ {-1, -1, 0} });
+        quad->push_back({ {1, 1, 0} });
+        quad->push_back({ {1, -1, 0} });
+        screenQuad.Buffer();
+        initQuad = false;
+    }
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glDisable(GL_CULL_FACE);
+    glClearColor(0.1, 0.1, 0.1, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    m_lightingShader->uniform3f("u_cameraPos", cam->GetPosition());
+    m_lightingShader->uniform1i("u_showNormals", m_showNormals);
+    screenQuad.Draw();
 }

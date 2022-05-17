@@ -1,37 +1,16 @@
 #version 330 core
 
-out vec4 fragColor;
+layout (location = 0) out vec4 gColor;
+layout (location = 1) out vec3 gPosition;
+layout (location = 2) out vec3 gNormal;
 
 in vec4 v_color;
 in vec3 fragPos;
 in vec3 normal;
 
-uniform bool u_showNormals;
-uniform vec3 u_cameraPos;
 
 void main() {
-    // variables
-    vec3 lightPos = vec3(0, 0, 0);
-    float ambientStrength = 0.0;
-    float diffuseStrength = 0.8;
-    float specularStrength = 0.2;
-    int shininessStrength = 2;
-
-    // precomputed variables
-    vec3 lightDir = normalize(lightPos - fragPos);
-    vec3 viewDir = normalize(u_cameraPos - fragPos);
-    vec3 halfwayDir = normalize(lightDir + viewDir);  
-
-    // diffuse
-    float diffuse = max(dot(normal, lightDir), 0) * diffuseStrength;
-
-    // specular
-    float specular = 0;
-    if (diffuse > 0)
-        specular = specularStrength * pow(max(dot(normal, halfwayDir), 0.0), shininessStrength);
-
-    vec3 outColor = v_color.xyz * (ambientStrength + diffuse + specular);
-    if (u_showNormals)
-        outColor = normal;
-    fragColor = vec4(outColor, 1);
+    gColor = v_color;
+    gPosition = fragPos;
+    gNormal = normal;
 }

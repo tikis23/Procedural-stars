@@ -105,7 +105,7 @@ bool Application::Start()
 
 
 
-            m_renderer->Draw(&cam);
+            m_renderer->Draw(&cam, m_window.get());
         }
         if (ImGui::Begin("Settings", 0)) {
             if (ImGui::BeginTabBar("")) {
