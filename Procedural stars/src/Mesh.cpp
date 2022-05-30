@@ -11,10 +11,11 @@ Mesh::~Mesh() {
 }
 
 void Mesh::Draw() {
-	if (m_vertexData.empty())
-		return;
-	glBindVertexArray(m_VAO);
-	glDrawArrays(GL_TRIANGLES, 0, m_vertexData.size());
+	if (m_buffered) {
+		glBindVertexArray(m_VAO);
+		glDrawArrays(GL_TRIANGLES, 0, m_vertexData.size());
+		TriangleCount += m_vertexData.size() / 3;
+	}
 }
 
 void Mesh::Buffer() {
@@ -27,6 +28,9 @@ void Mesh::Buffer() {
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, position));
 	glEnableVertexAttribArray(0);
-	//glVertexAttribPointer(1, 4, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, color));
-	//glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, color));
+	glEnableVertexAttribArray(1);
+	m_buffered = true;
 }
+
+int Mesh::TriangleCount = 0;

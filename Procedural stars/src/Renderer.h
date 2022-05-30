@@ -12,11 +12,17 @@ private:
 	void LoadShaders();
 
 	std::shared_ptr<Shader> m_terrainShader;
-	std::shared_ptr<Shader> m_oceanShader;
 	std::shared_ptr<Shader> m_lightingShader;
-
-	bool m_showNormals = false;
-	bool m_showWireframe = false;
+	std::shared_ptr<Shader> m_debugShader;
 	bool m_smoothShading = true;
-	bool m_backFaceCulling = false;
+	bool m_backFaceCulling = true;
+	bool m_showWireframe = false;
+
+	bool m_debugMode = false;
+	struct DEBUG_VARS {
+		bool color = false;
+		bool normals = false;
+		bool diffuse = false;
+		bool specular = false;
+	}debugvars;
 };

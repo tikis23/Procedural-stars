@@ -1,0 +1,13 @@
+#version 330
+
+layout (location = 0) in vec4 in_position;
+
+out vec2 texCoord;
+
+void main()
+{
+    gl_Position = vec4(in_position.xyz, 1.0f);
+
+    texCoord.x = (in_position.x + 1) * 0.5;
+    texCoord.y = (in_position.y + 1) * 0.5;
+}

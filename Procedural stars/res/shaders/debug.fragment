@@ -1,0 +1,88 @@
+#version 330
+
+out vec4 fragColor;
+in vec2 texCoord;
+
+uniform sampler2D u_texColor;
+uniform sampler2D u_texPosition;
+uniform sampler2D u_texNormal;
+uniform vec3 u_cameraPos;
+
+
+#define DEBUG_AMOUNT 4
+uniform bool u_debug[DEBUG_AMOUNT];
+void ShowDebugFrag(int index) {
+    //extract fragment data from fbo
+    vec4 color = texture(u_texColor, texCoord);
+    vec3 position = texture(u_texPosition, texCoord).rgb;
+    vec3 normal = texture(u_texNormal, texCoord).rgb;
+
+    // variables
+    vec3 lightPos = vec3(500, 500, 500);
+    float ambientStrength = 0.1;
+    float diffuseStrength = 0.8;
+    float specularStrength = 0.2;
+    int shininessStrength = 2;
+
+    // precomputed variables
+    vec3 lightDir = normalize(lightPos - position);
+    vec3 viewDir = normalize(u_cameraPos - position);
+    vec3 halfwayDir = normalize(lightDir + viewDir);  
+    // diffuse
+    float diffuse = max(dot(normal, lightDir), 0) * diffuseStrength;
+    // specular
+    float specular = 0;
+    if (diffuse > 0)
+        specular = specularStrength * pow(max(dot(normal, halfwayDir), 0.0), shininessStrength);
+
+    // choose
+    switch (index) {
+    case 0: // color
+        fragColor = vec4(color.rgb, 1);
+        break;
+    case 1: // normal
+        fragColor = vec4(normal, 1);
+        break;
+    case 2: // diffuse
+        fragColor = vec4(color.xyz * diffuse, 1);
+        break;
+    case 3: // specular
+        fragColor = vec4(color.xyz * specular, 1);
+        break;
+    }
+}
+void main()
+{
+    // calculate windows and rows needed, get needed screen effects
+    int screens[DEBUG_AMOUNT];
+    int screenIndex = 0;
+    int screenCounter = 0;
+    for (int i = 0; i < DEBUG_AMOUNT; i++) {
+        if (u_debug[i]) {
+            screenCounter++;
+            screens[screenIndex] = i;
+            screenIndex++;
+        }
+    }
+    screenIndex = 0;
+    int numRows = int(float(screenCounter) * 0.5 + 0.5);
+    float rowStep = 1.0 / numRows;
+
+    // draw windows in row by 2 (top, bottom)
+    int row = 0;
+    while (screenCounter > 1) {
+        screenCounter -= 2;
+        if (texCoord.x >= row * rowStep && texCoord.x <= row * rowStep + rowStep) {
+            if (texCoord.y > 0.5)
+                ShowDebugFrag(screens[row*2]);
+            else
+                ShowDebugFrag(screens[row*2+1]);
+        }
+        row++;
+    }
+    // draw remaining window
+    if (screenCounter > 0) {
+        if (texCoord.x >= row * rowStep && texCoord.x <= row * rowStep + rowStep)
+            ShowDebugFrag(screens[row*2]);
+    }
+}

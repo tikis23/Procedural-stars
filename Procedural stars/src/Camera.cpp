@@ -31,26 +31,26 @@ void Camera::UpdateInput(Window* window) {
     // rotation
     glm::vec2 mousePos = window->GetMousePosition();
     if (window->IsHeld(Input::MOUSE::RIGHT)) {
+        // add rotation
         glm::vec2 offset = mousePos - m_previousMousePosition;
         m_rotation.x += offset.x * m_lookSpeed * dt;
         m_rotation.y += offset.y * m_lookSpeed * dt;
+        m_rotation.x = fmodf(m_rotation.x, 360.0f);
         if (m_rotation.y > 89.0f)
             m_rotation.y = 89.0f;
         if (m_rotation.y < -89.0f)
             m_rotation.y = -89.0f;
-        m_rotation.x = fmodf(m_rotation.x, 360.0f);
-        m_rotation.z = fmodf(m_rotation.z, 360.0f);
 
-        // calculate front && up vectors
-        m_up = { 0, 1, 0 };
-        m_front.x = cos(glm::radians(m_rotation.x)) * cos(glm::radians(m_rotation.y));
-        m_front.y = sin(glm::radians(m_rotation.y));
-        m_front.z = sin(glm::radians(m_rotation.x)) * cos(glm::radians(m_rotation.y));
+
+        // apply rotation
+        glm::vec3 temp_rotation = m_rotation;
+        m_front.x = cos(glm::radians(temp_rotation.x)) * cos(glm::radians(temp_rotation.y));
+        m_front.y = sin(glm::radians(temp_rotation.y));
+        m_front.z = sin(glm::radians(temp_rotation.x)) * cos(glm::radians(temp_rotation.y));
         m_front = glm::normalize(m_front);
     }
     m_previousMousePosition = mousePos;
-
-
+    
     // WASD
     bool update = false;
     glm::vec3 offset = { 0, 0, 0 };
@@ -100,7 +100,7 @@ void Camera::Update(float aspectRatio) {
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Camera")) {
-                ImGui::SliderFloat("Movement Speed", &m_walkSpeed, 0.0f, 1000.0f);
+                ImGui::DragFloat("Movement Speed", &m_walkSpeed, 0.1f, 0, 10000000.f);
                 ImGui::SliderFloat("Sensitivity", &m_lookSpeed, 0.0f, 1000.0f);
                 ImGui::SliderFloat("FOV", &m_parameters.fov, 0.0f, 200.0f);
 

@@ -73,7 +73,7 @@ bool Application::Init()
 bool Application::Start()
 {
     m_running = true;
-    Camera cam({}, {0.0f, 0.0f, 300.0f}, {0.0f, 0.0f, 0.0f});
+    Camera cam({}, {0.0f, 400.0f, 0.0f}, {0.0f, 0.0f, 0.0f});
     while (m_running) {
         if (glfwWindowShouldClose(m_window->Handle()))
             m_running = false;
@@ -102,8 +102,6 @@ bool Application::Start()
 
             cam.UpdateInput(m_window.get());
             cam.Update(m_window->GetAspectRatio());
-
-
 
             m_renderer->Draw(&cam, m_window.get());
         }

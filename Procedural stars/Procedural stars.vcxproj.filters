@@ -66,6 +66,9 @@
     <ClCompile Include="src\Buffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\QuadTree.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Application.h">
@@ -125,15 +128,20 @@
     <ClInclude Include="src\Buffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\QuadTree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Workers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\terrain.vertex" />
     <None Include="res\shaders\terrain.fragment" />
     <None Include="res\shaders\terrain.geometry" />
-    <None Include="res\shaders\ocean.geometry" />
-    <None Include="res\shaders\ocean.vertex" />
-    <None Include="res\shaders\ocean.fragment" />
     <None Include="res\shaders\lighting.vertex" />
     <None Include="res\shaders\lighting.fragment" />
+    <None Include="res\shaders\debug.fragment" />
+    <None Include="res\shaders\debug.vertex" />
   </ItemGroup>
 </Project>

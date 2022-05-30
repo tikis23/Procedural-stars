@@ -162,6 +162,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Mesh.cpp" />
     <ClCompile Include="src\Planet.cpp" />
+    <ClCompile Include="src\QuadTree.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
     <ClCompile Include="src\Window.cpp" />
   </ItemGroup>
@@ -182,16 +183,17 @@
     <ClInclude Include="src\Input.h" />
     <ClInclude Include="src\Mesh.h" />
     <ClInclude Include="src\Planet.h" />
+    <ClInclude Include="src\QuadTree.h" />
     <ClInclude Include="src\Renderer.h" />
     <ClInclude Include="src\Shader.h" />
     <ClInclude Include="src\Window.h" />
+    <ClInclude Include="src\Workers.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="res\shaders\debug.fragment" />
+    <None Include="res\shaders\debug.vertex" />
     <None Include="res\shaders\lighting.fragment" />
     <None Include="res\shaders\lighting.vertex" />
-    <None Include="res\shaders\ocean.fragment" />
-    <None Include="res\shaders\ocean.geometry" />
-    <None Include="res\shaders\ocean.vertex" />
     <None Include="res\shaders\terrain.fragment" />
     <None Include="res\shaders\terrain.geometry" />
     <None Include="res\shaders\terrain.vertex" />
