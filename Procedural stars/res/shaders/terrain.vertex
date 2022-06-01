@@ -1,15 +1,27 @@
-#version 330 core
+#version 410 core
 
 layout(location = 0) in vec3 in_position;
-layout(location = 1) in vec3 in_color;
+layout(location = 1) in vec3 in_normal;
+layout(location = 2) in vec3 in_color;
 
-out VertexData
-{
-    vec4 color;
+out VertexOut {
+    vec3 position;
+    vec3 normal;
+    vec3 color;
 } vertex;
 
 void main()
 {
-    vertex.color = vec4(in_color.xyz, 1);
-    gl_Position = vec4(in_position.xyz, 1);
+//    mat3 normalMatrix = transpose(inverse(mat3(model)));
+//    mat4 viewModel = view * model;
+//    vec4 viewPos = viewModel * vec4(in_position, 1);
+//
+//    normal = normalize(in_normal);
+//    v_color = vec4(in_color.xyz, 1);
+//
+//    fragPos = viewPos.xyz;
+//    gl_Position = projection * viewPos;
+    vertex.color = in_color;
+    vertex.normal = in_normal;
+    vertex.position = in_position;
 }

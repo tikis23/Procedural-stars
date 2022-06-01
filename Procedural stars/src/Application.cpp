@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <format>
+#include "Timer.h"
 
 void ErrorCallback(int error, const char* msg) {
     std::cerr << " [" + std::to_string(error) + "] " + msg + '\n';
@@ -33,6 +34,8 @@ bool Application::Init()
     }
 
     // create window
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     Window::WindowParameters windowParams;
     windowParams.mode = Window::WINDOW_MODE::WINDOWED;
     windowParams.title = "Procedural stars";
@@ -43,6 +46,7 @@ bool Application::Init()
     windowParams.resizeable = false;
     m_window.reset(new Window(windowParams));
     m_window->MakeContextCurrent();
+    glfwSwapInterval(0); // frame limit off
 
     // init glew
     if (glewInit() != GLEW_OK) {
@@ -74,11 +78,13 @@ bool Application::Start()
 {
     m_running = true;
     Camera cam({}, {0.0f, 400.0f, 0.0f}, {0.0f, 0.0f, 0.0f});
+    Timer frametimer;
+    int frames = 0;
+    float frametime = 0;
+    int FPS = 0;
     while (m_running) {
         if (glfwWindowShouldClose(m_window->Handle()))
             m_running = false;
-        float timerStart = glfwGetTime();
-
         // Start ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -109,7 +115,7 @@ bool Application::Start()
             if (ImGui::BeginTabBar("")) {
                 if (ImGui::BeginTabItem("Info")) {
                     ImGui::Text("");
-                    ImGui::Text(std::format("frame time: {} ms", glfwGetTime() - timerStart).c_str());
+                    ImGui::Text(std::format("{} FPS | {} ms", FPS, frametime).c_str());
                     ImGui::EndTabItem();
                 }
                 ImGui::EndTabBar();
@@ -125,6 +131,15 @@ bool Application::Start()
             glfwMakeContextCurrent(backup_current_context);
         }
         m_window->Update();
+        // calculate frame time
+        frames++;
+        float elapsed = frametimer.Elapsed();
+        if (elapsed > 250) {
+            FPS = frames / elapsed * 1000;
+            frametime = elapsed / frames;
+            frametimer.Reset();
+            frames = 0;
+        }
     }
 	return true;
 }

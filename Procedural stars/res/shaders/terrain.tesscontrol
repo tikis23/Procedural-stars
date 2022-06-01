@@ -1,0 +1,52 @@
+#version 410 core
+
+layout (vertices = 3) out;
+
+uniform vec3 u_cameraPos;
+
+in VertexOut {
+    vec3 position;
+    vec3 normal;
+    vec3 color;
+} vertex_in[];
+
+out TSC {
+    vec3 position;
+    vec3 normal;
+    vec3 color;
+} vertex_out[];
+
+float GetTessLevel(float Distance0, float Distance1);
+void main()
+{
+    // Set the control points of the output patch
+    vertex_out[gl_InvocationID].position = vertex_in[gl_InvocationID].position;
+    vertex_out[gl_InvocationID].normal = vertex_in[gl_InvocationID].normal;
+    vertex_out[gl_InvocationID].color = vertex_in[gl_InvocationID].color;
+
+    // Calculate the distance from the camera to the three control points
+    float EyeToVertexDistance0 = distance(u_cameraPos, vertex_out[0].position);
+    float EyeToVertexDistance1 = distance(u_cameraPos, vertex_out[1].position);
+    float EyeToVertexDistance2 = distance(u_cameraPos, vertex_out[2].position);
+
+    // Calculate the tessellation levels
+    gl_TessLevelOuter[0] = GetTessLevel(EyeToVertexDistance1, EyeToVertexDistance2);
+    gl_TessLevelOuter[1] = GetTessLevel(EyeToVertexDistance2, EyeToVertexDistance0);
+    gl_TessLevelOuter[2] = GetTessLevel(EyeToVertexDistance0, EyeToVertexDistance1);
+    gl_TessLevelInner[0] = gl_TessLevelOuter[2];
+} 
+
+float GetTessLevel(float Distance0, float Distance1)
+{
+    float AvgDistance = (Distance0 + Distance1) / 2.0;
+
+    if (AvgDistance <= 100.0) {
+        return 10.0;
+    }
+    else if (AvgDistance <= 200.0) {
+        return 2.0;
+    }
+    else {
+        return 1.0;
+    }
+} 

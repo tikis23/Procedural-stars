@@ -134,14 +134,20 @@
     <ClInclude Include="src\Workers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Timer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\terrain.vertex" />
     <None Include="res\shaders\terrain.fragment" />
-    <None Include="res\shaders\terrain.geometry" />
+    <None Include="res\shaders\terrain.tesseval" />
     <None Include="res\shaders\lighting.vertex" />
     <None Include="res\shaders\lighting.fragment" />
     <None Include="res\shaders\debug.fragment" />
     <None Include="res\shaders\debug.vertex" />
+    <None Include="res\shaders\ssao.fragment" />
+    <None Include="res\shaders\ssao.vertex" />
+    <None Include="res\shaders\terrain.tesscontrol" />
   </ItemGroup>
 </Project>

@@ -31,7 +31,7 @@ private:
 	void GenerateMesh(QUADTREE_NODE* node);
 	void RenderLod(QUADTREE_NODE* node, glm::vec3 cameraPos);
 	glm::vec3 ApplyNoise(glm::vec3 pos);
-	void MeshCreateData(Mesh* mesh, int face, glm::vec3 localPosition, glm::vec3 dimensions);
+	void MeshCreateData(Mesh* mesh, void* ptr, int face, glm::vec3 localPosition, glm::vec3 dimensions);
 
 	float m_radius;
 	unsigned int m_lodAmount;

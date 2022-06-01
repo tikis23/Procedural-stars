@@ -63,6 +63,9 @@ public:
 	void uniform2f(const std::string& location, float value_1, float value_2) const {
 		glUniform2f(glGetUniformLocation(id, location.c_str()), value_1, value_2);
 	}
+	void uniform2f(const std::string& location, glm::vec2 value) const {
+		glUniform2f(glGetUniformLocation(id, location.c_str()), value.x, value.y);
+	}
 	void uniform3f(const std::string& location, float value_1, float value_2, float value_3) const {
 		glUniform3f(glGetUniformLocation(id, location.c_str()), value_1, value_2, value_3);
 	}
@@ -88,11 +91,29 @@ public:
 	}
 
 	// arrays
-	void uniformArrf(const std::string& location, int size, float value[]) const {
+	void uniformArr1f(const std::string& location, int size, float value[]) const {
 		glUniform1fv(glGetUniformLocation(id, location.c_str()), size, value);
 	}
-	void uniformArri(const std::string& location, int size, int value[]) const {
+	void uniformArr2f(const std::string& location, int size, float value[]) const {
+		glUniform2fv(glGetUniformLocation(id, location.c_str()), size, value);
+	}
+	void uniformArr3f(const std::string& location, int size, float value[]) const {
+		glUniform3fv(glGetUniformLocation(id, location.c_str()), size, value);
+	}
+	void uniformArr4f(const std::string& location, int size, float value[]) const {
+		glUniform4fv(glGetUniformLocation(id, location.c_str()), size, value);
+	}
+	void uniformArr1i(const std::string& location, int size, int value[]) const {
 		glUniform1iv(glGetUniformLocation(id, location.c_str()), size, value);
+	}
+	void uniformArr2i(const std::string& location, int size, int value[]) const {
+		glUniform2iv(glGetUniformLocation(id, location.c_str()), size, value);
+	}
+	void uniformArr3i(const std::string& location, int size, int value[]) const {
+		glUniform3iv(glGetUniformLocation(id, location.c_str()), size, value);
+	}
+	void uniformArr4i(const std::string& location, int size, int value[]) const {
+		glUniform4iv(glGetUniformLocation(id, location.c_str()), size, value);
 	}
 
 	// matrix

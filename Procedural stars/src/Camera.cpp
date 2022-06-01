@@ -33,8 +33,8 @@ void Camera::UpdateInput(Window* window) {
     if (window->IsHeld(Input::MOUSE::RIGHT)) {
         // add rotation
         glm::vec2 offset = mousePos - m_previousMousePosition;
-        m_rotation.x += offset.x * m_lookSpeed * dt;
-        m_rotation.y += offset.y * m_lookSpeed * dt;
+        m_rotation.x += offset.x * m_lookSpeed;
+        m_rotation.y += offset.y * m_lookSpeed;
         m_rotation.x = fmodf(m_rotation.x, 360.0f);
         if (m_rotation.y > 89.0f)
             m_rotation.y = 89.0f;
@@ -100,9 +100,21 @@ void Camera::Update(float aspectRatio) {
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Camera")) {
-                ImGui::DragFloat("Movement Speed", &m_walkSpeed, 0.1f, 0, 10000000.f);
-                ImGui::SliderFloat("Sensitivity", &m_lookSpeed, 0.0f, 1000.0f);
-                ImGui::SliderFloat("FOV", &m_parameters.fov, 0.0f, 200.0f);
+                if (m_walkSpeed < 2)
+                    ImGui::DragFloat("Movement Speed", &m_walkSpeed, 5 * 0.001f, 0, 100000000.f);
+                else if (m_walkSpeed < 5)
+                    ImGui::DragFloat("Movement Speed", &m_walkSpeed, 5 * 0.0025f, 0, 100000000.f);
+                else if (m_walkSpeed < 20)
+                    ImGui::DragFloat("Movement Speed", &m_walkSpeed, 5 * 0.01f, 0, 100000000.f);
+                else if (m_walkSpeed < 200)
+                    ImGui::DragFloat("Movement Speed", &m_walkSpeed, 5 * 0.1f, 0, 100000000.f);
+                else if (m_walkSpeed < 800)
+                    ImGui::DragFloat("Movement Speed", &m_walkSpeed, 5 * 1.f, 0, 100000000.f);
+                else
+                    ImGui::DragFloat("Movement Speed", &m_walkSpeed, 5 * 2.5f, 0, 100000000.f);
+
+                ImGui::DragFloat("Sensitivity", &m_lookSpeed, 0.01f, 0, 1000.0f);
+                ImGui::DragFloat("FOV", &m_parameters.fov, 0.1f, 30, 200.0f);
 
                 ImGui::EndTabItem();
             }

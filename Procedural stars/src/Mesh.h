@@ -5,6 +5,7 @@
 
 struct Vertex {
 	glm::vec3 position;
+	glm::vec3 normal;
 	glm::vec3 color;
 };
 
@@ -12,12 +13,16 @@ class Mesh {
 public:
 	Mesh();
 	~Mesh();
-	void Draw();
-	void Buffer();
+	void Draw(GLenum mode);
 	std::vector<Vertex>* GetVertexData() { return &m_vertexData; };
+	void Buffer();
 	bool IsBuffered() { return m_buffered; };
-	bool ReadyToBuffer() { return m_readyToBuffer; };
-	void ReadyToBuffer(bool val) { m_readyToBuffer = val; };
+	void IsBuffered(bool val) { m_buffered = val; };
+	bool NeedUnmap() { return m_unmap; };
+	void NeedUnmap(bool val) { m_unmap = val; };
+	void Allocate(size_t size);
+	void* MapBuffer();
+	void UnmapBuffer();
 
 	static int TriangleCount;
 private:
@@ -25,5 +30,5 @@ private:
 	unsigned int m_VAO;
 	unsigned int m_VBO;
 	bool m_buffered = false;
-	bool m_readyToBuffer = false;
+	bool m_unmap = false;
 };

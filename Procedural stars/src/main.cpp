@@ -13,7 +13,10 @@ int main() {
 	return start();
 }
 #else
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow){
+int main() {
 	return start();
 }
+//int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow){
+//	return start();
+//}
 #endif

@@ -13,9 +13,10 @@ private:
 
 	std::shared_ptr<Shader> m_terrainShader;
 	std::shared_ptr<Shader> m_lightingShader;
+	std::shared_ptr<Shader> m_SSAOShader;
 	std::shared_ptr<Shader> m_debugShader;
-	bool m_smoothShading = true;
 	bool m_backFaceCulling = true;
+	bool m_ssao = true;
 	bool m_showWireframe = false;
 
 	bool m_debugMode = false;
@@ -24,5 +25,6 @@ private:
 		bool normals = false;
 		bool diffuse = false;
 		bool specular = false;
+		bool ssao = false;
 	}debugvars;
 };

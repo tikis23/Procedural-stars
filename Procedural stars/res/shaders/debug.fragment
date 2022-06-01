@@ -1,4 +1,4 @@
-#version 330
+#version 410
 
 out vec4 fragColor;
 in vec2 texCoord;
@@ -6,16 +6,18 @@ in vec2 texCoord;
 uniform sampler2D u_texColor;
 uniform sampler2D u_texPosition;
 uniform sampler2D u_texNormal;
+uniform sampler2D u_texSSAO;
 uniform vec3 u_cameraPos;
 
 
-#define DEBUG_AMOUNT 4
+#define DEBUG_AMOUNT 5
 uniform bool u_debug[DEBUG_AMOUNT];
 void ShowDebugFrag(int index) {
     //extract fragment data from fbo
     vec4 color = texture(u_texColor, texCoord);
     vec3 position = texture(u_texPosition, texCoord).rgb;
     vec3 normal = texture(u_texNormal, texCoord).rgb;
+    float ssao = texture(u_texSSAO, texCoord).r;
 
     // variables
     vec3 lightPos = vec3(500, 500, 500);
@@ -48,6 +50,9 @@ void ShowDebugFrag(int index) {
         break;
     case 3: // specular
         fragColor = vec4(color.xyz * specular, 1);
+        break;
+    case 4: // ssao
+        fragColor = vec4(vec3(1, 1, 1) * ssao, 1);
         break;
     }
 }

@@ -39,6 +39,6 @@ private:
 	glm::vec2 m_previousMousePosition;
 	float m_previousTime;
 
-	float m_walkSpeed = 10;
-	float m_lookSpeed = 25;
+	float m_walkSpeed = 300;
+	float m_lookSpeed = 0.15;
 };

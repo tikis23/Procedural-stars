@@ -1,4 +1,4 @@
-#version 330
+#version 410
 
 out vec4 fragColor;
 in vec2 texCoord;
@@ -7,8 +7,10 @@ in vec2 texCoord;
 uniform sampler2D u_texColor;
 uniform sampler2D u_texPosition;
 uniform sampler2D u_texNormal;
+uniform sampler2D u_texSSAO;
 
 uniform vec3 u_cameraPos;
+uniform int u_ssao;
 
 void main()
 {
@@ -16,10 +18,10 @@ void main()
     vec4 color = texture(u_texColor, texCoord);
     vec3 position = texture(u_texPosition, texCoord).rgb;
     vec3 normal = texture(u_texNormal, texCoord).rgb;
-
+    float ssao = texture(u_texSSAO, texCoord).r * u_ssao + 1 * (1 - u_ssao);
     // variables
     vec3 lightPos = vec3(500, 500, 500);
-    float ambientStrength = 0.1;
+    float ambientStrength = 0.3 * ssao;
     float diffuseStrength = 0.8;
     float specularStrength = 0.2;
     int shininessStrength = 2;

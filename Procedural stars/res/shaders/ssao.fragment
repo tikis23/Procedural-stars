@@ -1,0 +1,55 @@
+#version 410
+
+out float colorOutput;
+in vec2 texCoord;
+
+
+uniform sampler2D u_texPosition;
+uniform sampler2D u_texNormal;
+uniform sampler2D u_texNoise;
+
+uniform vec3 u_samples[64];
+uniform mat4 u_projection;
+uniform vec2 u_screen;
+
+// vars
+int kernelSize = 64;
+float radius = 1;
+float bias = 0.01;//0.025;
+
+void main()
+{
+    vec2 noiseScale = u_screen * 0.25;
+
+    vec3 fragPos = texture(u_texPosition, texCoord).rgb;
+    vec3 normal = texture(u_texNormal, texCoord).rgb;
+    vec3 randomVec = normalize(texture(u_texNoise, texCoord * noiseScale).rgb);
+
+    // create TBN change-of-basis matrix: from tangent-space to view-space
+    vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
+    vec3 bitangent = cross(normal, tangent);
+    mat3 TBN = mat3(tangent, bitangent, normal);
+    // iterate over the sample kernel and calculate occlusion factor
+    float occlusion = 0.0;
+    for(int i = 0; i < kernelSize; ++i)
+    {
+        // get sample position
+        vec3 samplePos = TBN * u_samples[i]; // from tangent to view-space
+        samplePos = fragPos + samplePos * radius; 
+        
+        // project sample position (to sample texture) (to get position on screen/texture)
+        vec4 offset = vec4(samplePos, 1.0);
+        offset = u_projection * offset; // from view to clip-space
+        offset.xyz /= offset.w; // perspective divide
+        offset.xyz = offset.xyz * 0.5 + 0.5; // transform to range 0.0 - 1.0
+        
+        // get sample depth
+        float sampleDepth = texture(u_texPosition, offset.xy).z; // get depth value of kernel sample
+        
+        // range check & accumulate
+        float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth));
+        occlusion += (sampleDepth >= samplePos.z + bias ? 1.0 : 0.0) * rangeCheck;           
+    }
+    occlusion = 1.0 - (occlusion / kernelSize);
+    colorOutput = occlusion;
+}

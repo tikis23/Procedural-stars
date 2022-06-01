@@ -1,6 +1,13 @@
 #include "Buffer.h"
 #include <GL/glew.h>
 #include <iostream>
+#include <random>
+#include "glm/gtc/type_ptr.hpp"
+
+float lerp(float a, float b, float f) {
+    return a + f * (b - a);
+}
+
 GBuffer::GBuffer(std::uint32_t width, std::uint32_t height) {
     glGenFramebuffers(1, &m_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
@@ -48,20 +55,105 @@ void GBuffer::BindWrite() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-void GBuffer::BindRead(Shader* shader) {
+void GBuffer::BindRead() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
 
-    glActiveTexture(GL_TEXTURE0);
+void GBuffer::BindColor(Shader* shader, int pos) {
+    glActiveTexture(GL_TEXTURE0 + pos);
     glBindTexture(GL_TEXTURE_2D, m_texColor);
-    shader->uniform1i("u_texColor", 0);
+    shader->uniform1i("u_texColor", pos);
+}
 
-    glActiveTexture(GL_TEXTURE1);
+void GBuffer::BindPosition(Shader* shader, int pos) {
+    glActiveTexture(GL_TEXTURE0 + pos);
     glBindTexture(GL_TEXTURE_2D, m_texPosition);
-    shader->uniform1i("u_texPosition", 1);
+    shader->uniform1i("u_texPosition", pos);
+}
 
-    glActiveTexture(GL_TEXTURE2);
+void GBuffer::BindNormal(Shader* shader, int pos) {
+    glActiveTexture(GL_TEXTURE0 + pos);
     glBindTexture(GL_TEXTURE_2D, m_texNormal);
-    shader->uniform1i("u_texNormal", 2);
+    shader->uniform1i("u_texNormal", pos);
+}
 
+SSAOBuffer::SSAOBuffer(std::uint32_t width, std::uint32_t height) {
+    glGenFramebuffers(1, &m_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+
+    glGenTextures(1, &m_ssao);
+    glBindTexture(GL_TEXTURE_2D, m_ssao);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ssao, 0);
+
+    // kernels
+    std::uniform_real_distribution<float> randomFloat(0.0, 1.0);
+    std::default_random_engine generator;
+    for (unsigned int i = 0; i < 64; ++i)
+    {
+        glm::vec3 sample(randomFloat(generator) * 2.0 - 1.0, randomFloat(generator) * 2.0 - 1.0, randomFloat(generator));
+        sample = glm::normalize(sample);
+        sample *= randomFloat(generator);
+        float scale = float(i) / 64.0f;
+
+        // scale samples s.t. they're more aligned to center of kernel
+        scale = lerp(0.1f, 1.0f, scale * scale);
+        sample *= scale;
+        m_kernels.push_back(sample);
+    }
+
+    // noise
+    for (unsigned int i = 0; i < 16; i++) {
+        glm::vec3 noise(
+            randomFloat(generator) * 2.0 - 1.0,
+            randomFloat(generator) * 2.0 - 1.0,
+            0.0f);
+        m_noise.push_back(noise);
+    }
+
+    // generate noise texture
+    glGenTextures(1, &m_texNoise);
+    glBindTexture(GL_TEXTURE_2D, m_texNoise);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, 4, 4, 0, GL_RGB, GL_FLOAT, &m_noise[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    //Check Status
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "error while initializing framebuffer" << glCheckFramebufferStatus(GL_FRAMEBUFFER) << '\n';
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+SSAOBuffer::~SSAOBuffer() {
+}
+
+void SSAOBuffer::BindWrite() {
+    glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+    glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void SSAOBuffer::BindRead() {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void SSAOBuffer::BindNoise(Shader* shader, int pos) {
+    glActiveTexture(GL_TEXTURE0 + pos);
+    glBindTexture(GL_TEXTURE_2D, m_texNoise);
+    shader->uniform1i("u_texNormal", pos);
+}
+
+void SSAOBuffer::BindSSAO(Shader* shader, int pos) {
+    glActiveTexture(GL_TEXTURE0 + pos);
+    glBindTexture(GL_TEXTURE_2D, m_ssao);
+    shader->uniform1i("u_texSSAO", pos);
+}
+
+void SSAOBuffer::BindKernel(Shader* shader) {
+    shader->uniformArr3f("u_samples", m_kernels.size(), glm::value_ptr(m_kernels[0]));
 }
