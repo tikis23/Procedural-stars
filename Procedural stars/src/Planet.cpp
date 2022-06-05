@@ -5,8 +5,10 @@
 #include "glm/gtx/vector_angle.hpp"
 #include <GLFW/glfw3.h>
 #include <thread>
+#include <limits>
 #include <iostream>
 #include "Timer.h"
+#include "Debug.h"
 
 glm::vec3 MapToSphere(glm::vec3 pos) {
 	//return pos;
@@ -21,9 +23,11 @@ glm::vec3 MapToSphere(glm::vec3 pos) {
 }
 
 Planet::Planet() {
-	m_lodAmount = 1;
-	m_radius = 100;
-	m_nodeVertexAmount = 36;
+	m_radius = 10000;
+	m_maxHeight = 200;
+
+	m_lodAmount = 10;
+	m_nodeVertexAmount = 18;
 	m_tree = new QuadTree(6);
 	m_position = { 0, 0, 0 };
 	for (int i = 0; i < 6; i++) {
@@ -75,24 +79,62 @@ void Planet::Update() {
 	m_modelRot = glm::rotate(m_modelRot, glm::radians(m_rotation.z), glm::vec3(0, 0, 1));
 }
 
-void Planet::RenderLod(QUADTREE_NODE* node, glm::vec3 cameraPos) {
-	glm::vec3 pointPos = m_radius * MapToSphere(node->localPosition) + m_position;
-	glm::vec3 diff = pointPos - cameraPos;
-	double dist = sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z)
-		- sqrt(((node->dimensions.x + node->dimensions.y + node->dimensions.z) * 0.5)+
-			((node->dimensions.x + node->dimensions.y + node->dimensions.z) * 0.5));
+void DrawBoundingBox(glm::vec3 pmin, glm::vec3 pmax) {
+	if (Debug::GeometryEnabled()) {
+		glm::vec3 c1 = { pmin.x, pmin.y, pmin.z };
+		glm::vec3 c2 = { pmax.x, pmin.y, pmin.z };
+		glm::vec3 c3 = { pmax.x, pmax.y, pmin.z };
+		glm::vec3 c4 = { pmin.x, pmax.y, pmin.z };
+		glm::vec3 c5 = { pmin.x, pmin.y, pmax.z };
+		glm::vec3 c6 = { pmax.x, pmin.y, pmax.z };
+		glm::vec3 c7 = { pmax.x, pmax.y, pmax.z };
+		glm::vec3 c8 = { pmin.x, pmax.y, pmax.z };
 
-	double chunkSize = pow(2, m_lodAmount - node->level);
-	double perspectiveScale = 1000.0f / (2.f * tan(60.f * 0.5f));
-	double error = (chunkSize / dist) * perspectiveScale;
-	if (error < -100 && node->level + 1 <= m_lodAmount) {
+		Debug::DrawLine(c1, c2, { 1, 1, 0 });
+		Debug::DrawLine(c2, c3, { 1, 1, 0 });
+		Debug::DrawLine(c3, c4, { 1, 1, 0 });
+		Debug::DrawLine(c4, c1, { 1, 1, 0 });
+		Debug::DrawLine(c5, c6, { 1, 1, 0 });
+		Debug::DrawLine(c6, c7, { 1, 1, 0 });
+		Debug::DrawLine(c7, c8, { 1, 1, 0 });
+		Debug::DrawLine(c8, c5, { 1, 1, 0 });
+		Debug::DrawLine(c1, c5, { 1, 1, 0 });
+		Debug::DrawLine(c2, c6, { 1, 1, 0 });
+		Debug::DrawLine(c3, c7, { 1, 1, 0 });
+		Debug::DrawLine(c4, c8, { 1, 1, 0 });
+	}
+}
+
+double GetAABBDistance(glm::vec3 position, float radius, int face, glm::vec3 pmin, glm::vec3 pmax) {
+	glm::vec3 cp = position - glm::vec3{
+		std::clamp(position.x, pmin.x, pmax.x),
+		std::clamp(position.y, pmin.y, pmax.y),
+		std::clamp(position.z, pmin.z, pmax.z)
+	};
+	double dist = sqrt(cp.x * cp.x + cp.y * cp.y + cp.z * cp.z);
+	return dist;
+}
+
+void Planet::RenderLod(QUADTREE_NODE* node, Shader* shader, glm::vec3 cameraPos) {
+	double dist = std::max(0.0, GetAABBDistance(cameraPos, m_radius, node->face, node->minPoint, node->maxPoint) - m_maxHeight);
+	double chunkSize = glm::length(node->minPoint - node->maxPoint);// pow(2, m_lodAmount - node->level - 1) - doesn't consider planet size;
+	double error = chunkSize / dist;
+	double maxError = 2;
+	if (dist == 0) {
+		error = maxError + 1;
+	}
+	else {
+		maxError = maxError * pow(1.2, node->level);
+	}
+	if (error > maxError && node->level + 1 < m_lodAmount) {
 		node->Split();
-		RenderLod(node->child[0], cameraPos);
-		RenderLod(node->child[1], cameraPos);
-		RenderLod(node->child[2], cameraPos);
-		RenderLod(node->child[3], cameraPos);
+		RenderLod(node->child[0], shader, cameraPos);
+		RenderLod(node->child[1], shader, cameraPos);
+		RenderLod(node->child[2], shader, cameraPos);
+		RenderLod(node->child[3], shader, cameraPos);
 		return;
 	}
+
 	if (node->mesh == nullptr) {
 		GenerateMesh(node);
 	}
@@ -102,14 +144,17 @@ void Planet::RenderLod(QUADTREE_NODE* node, glm::vec3 cameraPos) {
 		node->mesh->IsBuffered(true);
 	}
 	if (node->mesh->IsBuffered()) {
+		shader->uniform1i("u_lod", node->level);
+		shader->uniform1f("u_radius", m_radius);
 		node->mesh->Draw(GL_PATCHES);
+		DrawBoundingBox(node->minPoint, node->maxPoint);
 	}
 }
 
-void Planet::Render(glm::vec3 cameraPos) {
+void Planet::Render(glm::vec3 cameraPos, Shader* shader) {
 	for (int i = 0; i < 6; i++) {
 		auto branch = m_tree->GetBranch(i);
-		RenderLod(branch, cameraPos);
+		RenderLod(branch, shader, cameraPos);
 	}
 }
 
@@ -135,127 +180,296 @@ inline glm::vec3 GetSmoothNormal(const glm::vec3& p0,
 	return glm::normalize(n0 + n1 + n2 + n3 + n4 + n5);
 }
 
-void Planet::MeshCreateData(Mesh* mesh, void* ptr, int face, glm::vec3 localPosition, glm::vec3 dimensions) {
+// old gen
+//void Planet::MeshCreateData(Mesh* mesh, void* ptr, int face, glm::vec3 localPosition, glm::vec3 dimensions) {
+//	Timer timer;
+//	auto data = mesh->GetVertexData();
+//	double step = std::max(dimensions.x, std::max(dimensions.y, dimensions.z)) * 2 / m_nodeVertexAmount;
+//	switch (face)
+//	{
+//	case PLANET_FACE::TOP:
+//		for (double i = localPosition.x - dimensions.x; i < localPosition.x + dimensions.x; i += step) {
+//			for (double j = localPosition.z - dimensions.z; j < localPosition.z + dimensions.z; j += step) {
+//				glm::vec3 point0 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step, localPosition.y, j + step }));
+//				glm::vec3 point1 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step, localPosition.y, j }));
+//				glm::vec3 point2 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i, localPosition.y, j + step }));
+//				glm::vec3 point3 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i, localPosition.y, j }));
+//				// neighbour points
+//				glm::vec3 np0 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i - step, localPosition.y, j - step }));
+//				glm::vec3 np1 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i - step, localPosition.y, j }));
+//				glm::vec3 np2 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i - step, localPosition.y, j + step }));
+//				glm::vec3 np3 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i, localPosition.y, j + step * 2 }));
+//				glm::vec3 np4 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step, localPosition.y, j + step * 2 }));
+//				glm::vec3 np5 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step * 2, localPosition.y, j + step * 2 }));
+//				glm::vec3 np6 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step * 2, localPosition.y, j + step }));
+//				glm::vec3 np7 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step * 2, localPosition.y, j }));
+//				glm::vec3 np8 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step, localPosition.y, j - step }));
+//				glm::vec3 np9 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i, localPosition.y, j - step }));
+//				
+//				glm::vec3 npoint0 = GetSmoothNormal(point0,
+//					np4, np5,
+//					np6, point1,
+//					point3, point2
+//					);
+//				glm::vec3 npoint1 = GetSmoothNormal(point1,
+//					point0, np6,
+//					np7, np8,
+//					np9, point3
+//					);
+//				glm::vec3 npoint2 = GetSmoothNormal(point2,
+//					np3, np4,
+//					point0, point3,
+//					np1, np2
+//				);
+//				glm::vec3 npoint3 = GetSmoothNormal(point3,
+//					point2, point0,
+//					point1, np9,
+//					np0, np1
+//				);
+//
+//				data->push_back({ point0, npoint0, {1, 0, 1} });
+//				data->push_back({ point1, npoint1, {1, 0, 1} });
+//				data->push_back({ point3, npoint3, {1, 0, 1} });
+//				data->push_back({ point3, npoint3, {1, 0, 1} });
+//				data->push_back({ point2, npoint2, {1, 0, 1} });
+//				data->push_back({ point0, npoint0, {1, 0, 1} });
+//			}
+//		}
+//		break;
+//	case PLANET_FACE::BOTTOM:
+//		for (double i = localPosition.x - dimensions.x; i < localPosition.x + dimensions.x; i += step) {
+//			for (double j = localPosition.z - dimensions.z; j < localPosition.z + dimensions.z; j += step) {
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{i, localPosition.y, j})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{i + step, localPosition.y, j})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{i + step, localPosition.y, j + step})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{i + step, localPosition.y, j + step})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{i, localPosition.y, j + step})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{i, localPosition.y, j})), {}, {1, 0, 1} });
+//			}
+//		}
+//		break;
+//	case PLANET_FACE::LEFT:
+//		for (double i = localPosition.y - dimensions.y; i < localPosition.y + dimensions.y; i += step) {
+//			for (double j = localPosition.z - dimensions.z; j < localPosition.z + dimensions.z; j += step) {
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i,  j})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i + step,  j})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i + step,  j + step})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i + step, j + step})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i,  j + step})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i,  j})), {}, {1, 0, 1} });
+//			}
+//		}
+//		break;
+//	case PLANET_FACE::RIGHT:
+//		for (double i = localPosition.y - dimensions.y; i < localPosition.y + dimensions.y; i += step) {
+//			for (double j = localPosition.z - dimensions.z; j < localPosition.z + dimensions.z; j += step) {
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i + step,  j + step})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i + step,  j})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i,  j})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i,  j})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i,  j + step})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i + step, j + step})), {}, {1, 0, 1} });
+//			}
+//		}
+//		break;
+//	case PLANET_FACE::FRONT:
+//		for (double i = localPosition.y - dimensions.y; i < localPosition.y + dimensions.y; i += step) {
+//			for (double j = localPosition.x - dimensions.x; j < localPosition.x + dimensions.x; j += step) {
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j + step, i + step,  localPosition.z})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j, i + step,  localPosition.z})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j, i,  localPosition.z})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j, i,  localPosition.z})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j + step, i,  localPosition.z})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j + step, i + step, localPosition.z})), {}, {1, 0, 1} });
+//			}
+//		}
+//		break;
+//	case PLANET_FACE::BACK:
+//		for (double i = localPosition.y - dimensions.y; i < localPosition.y + dimensions.y; i += step) {
+//			for (double j = localPosition.x - dimensions.x; j < localPosition.x + dimensions.x; j += step) {
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j, i,  localPosition.z})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j, i + step,  localPosition.z})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j + step, i + step,  localPosition.z})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j + step, i + step, localPosition.z})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j + step, i,  localPosition.z})), {}, {1, 0, 1} });
+//				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j, i,  localPosition.z})), {}, {1, 0, 1} });
+//			}
+//		}
+//		break;
+//	default:
+//		break;
+//	}
+//	timer.PrintElapsed("Mesh Created Data");
+//
+//	memcpy(ptr, data->data(), sizeof(Vertex) * data->size());
+//	mesh->NeedUnmap(true);
+//}
+
+glm::vec3 GetMinPoint(const glm::vec3& p1, const glm::vec3& p2) {
+	return {
+		std::min(p1.x, p2.x),
+		std::min(p1.y, p2.y),
+		std::min(p1.z, p2.z)
+	};
+}
+glm::vec3 GetMaxPoint(const glm::vec3& p1, const glm::vec3& p2) {
+	return {
+		std::max(p1.x, p2.x),
+		std::max(p1.y, p2.y),
+		std::max(p1.z, p2.z)
+	};
+}
+
+void Planet::MeshCreateData(QUADTREE_NODE* node, Mesh* mesh, void* ptr, int face, glm::vec3 localPosition, glm::vec3 dimensions) {
 	Timer timer;
 	auto data = mesh->GetVertexData();
+	data->clear();
+	data->reserve((m_nodeVertexAmount + 1) * (m_nodeVertexAmount + 1) * 6);
 	double step = std::max(dimensions.x, std::max(dimensions.y, dimensions.z)) * 2 / m_nodeVertexAmount;
+	glm::vec3 color = { floor((node->level % 3) * 0.55), floor(((node->level + 1) % 3) * 0.55), floor(((node->level + 2) % 3) * 0.55) };
+	glm::vec3 pmin(std::numeric_limits<float>::max());
+	glm::vec3 pmax(std::numeric_limits<float>::min());
 	switch (face)
 	{
 	case PLANET_FACE::TOP:
+		pmin = m_radius * MapToSphere(glm::vec3{ localPosition.x - dimensions.x, localPosition.y, localPosition.z - dimensions.z });
+		pmax = m_radius * MapToSphere(glm::vec3{ localPosition.x + dimensions.x, localPosition.y, localPosition.z + dimensions.z });
 		for (double i = localPosition.x - dimensions.x; i < localPosition.x + dimensions.x; i += step) {
 			for (double j = localPosition.z - dimensions.z; j < localPosition.z + dimensions.z; j += step) {
-				glm::vec3 point0 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step, localPosition.y, j + step }));
-				glm::vec3 point1 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step, localPosition.y, j }));
-				glm::vec3 point2 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i, localPosition.y, j + step }));
-				glm::vec3 point3 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i, localPosition.y, j }));
-				// neighbour points
-				glm::vec3 np0 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i - step, localPosition.y, j - step }));
-				glm::vec3 np1 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i - step, localPosition.y, j }));
-				glm::vec3 np2 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i - step, localPosition.y, j + step }));
-				glm::vec3 np3 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i, localPosition.y, j + step * 2 }));
-				glm::vec3 np4 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step, localPosition.y, j + step * 2 }));
-				glm::vec3 np5 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step * 2, localPosition.y, j + step * 2 }));
-				glm::vec3 np6 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step * 2, localPosition.y, j + step }));
-				glm::vec3 np7 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step * 2, localPosition.y, j }));
-				glm::vec3 np8 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i + step, localPosition.y, j - step }));
-				glm::vec3 np9 = ApplyNoise(m_radius * MapToSphere(glm::vec3{ i, localPosition.y, j - step }));
-				
-				glm::vec3 npoint0 = GetSmoothNormal(point0,
-					np4, np5,
-					np6, point1,
-					point3, point2
-					);
-				glm::vec3 npoint1 = GetSmoothNormal(point1,
-					point0, np6,
-					np7, np8,
-					np9, point3
-					);
-				glm::vec3 npoint2 = GetSmoothNormal(point2,
-					np3, np4,
-					point0, point3,
-					np1, np2
-				);
-				glm::vec3 npoint3 = GetSmoothNormal(point3,
-					point2, point0,
-					point1, np9,
-					np0, np1
-				);
+				glm::vec3 point0 = m_radius * MapToSphere(glm::vec3{ i + step, localPosition.y, j + step });
+				glm::vec3 point1 = m_radius * MapToSphere(glm::vec3{ i + step, localPosition.y, j });
+				glm::vec3 point2 = m_radius * MapToSphere(glm::vec3{ i, localPosition.y, j + step });
+				glm::vec3 point3 = m_radius * MapToSphere(glm::vec3{ i, localPosition.y, j });
 
-				data->push_back({ point0, npoint0, {1, 0, 1} });
-				data->push_back({ point1, npoint1, {1, 0, 1} });
-				data->push_back({ point3, npoint3, {1, 0, 1} });
-				data->push_back({ point3, npoint3, {1, 0, 1} });
-				data->push_back({ point2, npoint2, {1, 0, 1} });
-				data->push_back({ point0, npoint0, {1, 0, 1} });
+				data->push_back({ point0, {}, color });
+				data->push_back({ point1, {}, color });
+				data->push_back({ point3, {}, color });
+				data->push_back({ point3, {}, color });
+				data->push_back({ point2, {}, color });
+				data->push_back({ point0, {}, color });
+				
+				pmin = GetMinPoint(pmin, GetMinPoint(point0, GetMinPoint(point1, GetMinPoint(point2, point3))));
+				pmax = GetMaxPoint(pmax, GetMaxPoint(point0, GetMaxPoint(point1, GetMaxPoint(point2, point3))));
 			}
 		}
 		break;
 	case PLANET_FACE::BOTTOM:
+		pmin = m_radius * MapToSphere(glm::vec3{ localPosition.x - dimensions.x, localPosition.y, localPosition.z - dimensions.z });
+		pmax = m_radius * MapToSphere(glm::vec3{ localPosition.x + dimensions.x, localPosition.y, localPosition.z + dimensions.z });
 		for (double i = localPosition.x - dimensions.x; i < localPosition.x + dimensions.x; i += step) {
 			for (double j = localPosition.z - dimensions.z; j < localPosition.z + dimensions.z; j += step) {
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{i, localPosition.y, j})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{i + step, localPosition.y, j})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{i + step, localPosition.y, j + step})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{i + step, localPosition.y, j + step})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{i, localPosition.y, j + step})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{i, localPosition.y, j})), {}, {1, 0, 1} });
+				glm::vec3 point0 = m_radius * MapToSphere(glm::vec3{ i + step, localPosition.y, j + step });
+				glm::vec3 point1 = m_radius * MapToSphere(glm::vec3{ i + step, localPosition.y, j });
+				glm::vec3 point2 = m_radius * MapToSphere(glm::vec3{ i, localPosition.y, j + step });
+				glm::vec3 point3 = m_radius * MapToSphere(glm::vec3{ i, localPosition.y, j });
+
+				data->push_back({ point3, {}, color });
+				data->push_back({ point1, {}, color });
+				data->push_back({ point0, {}, color });
+				data->push_back({ point0, {}, color });
+				data->push_back({ point2, {}, color });
+				data->push_back({ point3, {}, color });
+
+				pmin = GetMinPoint(pmin, GetMinPoint(point0, GetMinPoint(point1, GetMinPoint(point2, point3))));
+				pmax = GetMaxPoint(pmax, GetMaxPoint(point0, GetMaxPoint(point1, GetMaxPoint(point2, point3))));
 			}
 		}
 		break;
 	case PLANET_FACE::LEFT:
+		pmin = m_radius * MapToSphere(glm::vec3{ localPosition.x, localPosition.y - dimensions.y, localPosition.z - dimensions.z });
+		pmax = m_radius * MapToSphere(glm::vec3{ localPosition.x, localPosition.y + dimensions.y, localPosition.z + dimensions.z });
 		for (double i = localPosition.y - dimensions.y; i < localPosition.y + dimensions.y; i += step) {
 			for (double j = localPosition.z - dimensions.z; j < localPosition.z + dimensions.z; j += step) {
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i,  j})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i + step,  j})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i + step,  j + step})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i + step, j + step})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i,  j + step})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i,  j})), {}, {1, 0, 1} });
+				glm::vec3 point0 = m_radius * MapToSphere(glm::vec3{ localPosition.x, i,  j });
+				glm::vec3 point1 = m_radius * MapToSphere(glm::vec3{ localPosition.x, i + step,  j });
+				glm::vec3 point2 = m_radius * MapToSphere(glm::vec3{ localPosition.x, i,  j + step });
+				glm::vec3 point3 = m_radius * MapToSphere(glm::vec3{ localPosition.x, i + step,  j + step });
+
+				data->push_back({ point0, {}, color });
+				data->push_back({ point1, {}, color });
+				data->push_back({ point3, {}, color });
+				data->push_back({ point3, {}, color });
+				data->push_back({ point2, {}, color });
+				data->push_back({ point0, {}, color });
+
+				pmin = GetMinPoint(pmin, GetMinPoint(point0, GetMinPoint(point1, GetMinPoint(point2, point3))));
+				pmax = GetMaxPoint(pmax, GetMaxPoint(point0, GetMaxPoint(point1, GetMaxPoint(point2, point3))));
 			}
 		}
 		break;
 	case PLANET_FACE::RIGHT:
+		pmin = m_radius * MapToSphere(glm::vec3{ localPosition.x, localPosition.y - dimensions.y, localPosition.z - dimensions.z });
+		pmax = m_radius * MapToSphere(glm::vec3{ localPosition.x, localPosition.y + dimensions.y, localPosition.z + dimensions.z });
 		for (double i = localPosition.y - dimensions.y; i < localPosition.y + dimensions.y; i += step) {
 			for (double j = localPosition.z - dimensions.z; j < localPosition.z + dimensions.z; j += step) {
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i + step,  j + step})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i + step,  j})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i,  j})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i,  j})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i,  j + step})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{localPosition.x, i + step, j + step})), {}, {1, 0, 1} });
+				glm::vec3 point0 = m_radius * MapToSphere(glm::vec3{ localPosition.x, i,  j });
+				glm::vec3 point1 = m_radius * MapToSphere(glm::vec3{ localPosition.x, i + step,  j });
+				glm::vec3 point2 = m_radius * MapToSphere(glm::vec3{ localPosition.x, i,  j + step });
+				glm::vec3 point3 = m_radius * MapToSphere(glm::vec3{ localPosition.x, i + step,  j + step });
+
+				data->push_back({ point3, {}, color });
+				data->push_back({ point1, {}, color });
+				data->push_back({ point0, {}, color });
+				data->push_back({ point0, {}, color });
+				data->push_back({ point2, {}, color });
+				data->push_back({ point3, {}, color });
+
+				pmin = GetMinPoint(pmin, GetMinPoint(point0, GetMinPoint(point1, GetMinPoint(point2, point3))));
+				pmax = GetMaxPoint(pmax, GetMaxPoint(point0, GetMaxPoint(point1, GetMaxPoint(point2, point3))));
 			}
 		}
 		break;
 	case PLANET_FACE::FRONT:
+		pmin = m_radius * MapToSphere(glm::vec3{ localPosition.x - dimensions.x, localPosition.y - dimensions.y, localPosition.z});
+		pmax = m_radius * MapToSphere(glm::vec3{ localPosition.x + dimensions.x, localPosition.y + dimensions.y, localPosition.z});
 		for (double i = localPosition.y - dimensions.y; i < localPosition.y + dimensions.y; i += step) {
 			for (double j = localPosition.x - dimensions.x; j < localPosition.x + dimensions.x; j += step) {
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j + step, i + step,  localPosition.z})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j, i + step,  localPosition.z})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j, i,  localPosition.z})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j, i,  localPosition.z})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j + step, i,  localPosition.z})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j + step, i + step, localPosition.z})), {}, {1, 0, 1} });
+				glm::vec3 point0 = m_radius * MapToSphere(glm::vec3{ j + step, i + step,  localPosition.z });
+				glm::vec3 point1 = m_radius * MapToSphere(glm::vec3{ j, i + step,  localPosition.z });
+				glm::vec3 point2 = m_radius * MapToSphere(glm::vec3{ j + step, i,  localPosition.z });
+				glm::vec3 point3 = m_radius * MapToSphere(glm::vec3{ j, i,  localPosition.z });
+
+				data->push_back({ point0, {}, color });
+				data->push_back({ point1, {}, color });
+				data->push_back({ point3, {}, color });
+				data->push_back({ point3, {}, color });
+				data->push_back({ point2, {}, color });
+				data->push_back({ point0, {}, color });
+
+				pmin = GetMinPoint(pmin, GetMinPoint(point0, GetMinPoint(point1, GetMinPoint(point2, point3))));
+				pmax = GetMaxPoint(pmax, GetMaxPoint(point0, GetMaxPoint(point1, GetMaxPoint(point2, point3))));
 			}
 		}
 		break;
 	case PLANET_FACE::BACK:
+		pmin = m_radius * MapToSphere(glm::vec3{ localPosition.x - dimensions.x, localPosition.y - dimensions.y, localPosition.z });
+		pmax = m_radius * MapToSphere(glm::vec3{ localPosition.x + dimensions.x, localPosition.y + dimensions.y, localPosition.z });
 		for (double i = localPosition.y - dimensions.y; i < localPosition.y + dimensions.y; i += step) {
 			for (double j = localPosition.x - dimensions.x; j < localPosition.x + dimensions.x; j += step) {
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j, i,  localPosition.z})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j, i + step,  localPosition.z})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j + step, i + step,  localPosition.z})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j + step, i + step, localPosition.z})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j + step, i,  localPosition.z})), {}, {1, 0, 1} });
-				data->push_back({ ApplyNoise(m_radius * MapToSphere(glm::vec3{j, i,  localPosition.z})), {}, {1, 0, 1} });
+				glm::vec3 point0 = m_radius * MapToSphere(glm::vec3{ j + step, i + step,  localPosition.z });
+				glm::vec3 point1 = m_radius * MapToSphere(glm::vec3{ j, i + step,  localPosition.z });
+				glm::vec3 point2 = m_radius * MapToSphere(glm::vec3{ j + step, i,  localPosition.z });
+				glm::vec3 point3 = m_radius * MapToSphere(glm::vec3{ j, i,  localPosition.z });
+
+				data->push_back({ point3, {}, color });
+				data->push_back({ point1, {}, color });
+				data->push_back({ point0, {}, color });
+				data->push_back({ point0, {}, color });
+				data->push_back({ point2, {}, color });
+				data->push_back({ point3, {}, color });
+
+				pmin = GetMinPoint(pmin, GetMinPoint(point0, GetMinPoint(point1, GetMinPoint(point2, point3))));
+				pmax = GetMaxPoint(pmax, GetMaxPoint(point0, GetMaxPoint(point1, GetMaxPoint(point2, point3))));
 			}
 		}
 		break;
 	default:
 		break;
 	}
-	timer.PrintElapsed("Mesh Created Data");
-
-	memcpy(ptr, data->data(), sizeof(Vertex) * data->size());
+	//timer.PrintElapsed("Mesh Created Data");
+	node->minPoint = pmin;
+	node->maxPoint = pmax;
+	memcpy(ptr, data->data(), sizeof(Vertex) * m_nodeVertexAmount * m_nodeVertexAmount * 6);
 	mesh->NeedUnmap(true);
 }
 
@@ -265,8 +479,9 @@ void Planet::GenerateMesh(QUADTREE_NODE* node) {
 	node->mesh = new Mesh;
 	node->mesh->Allocate(m_nodeVertexAmount * m_nodeVertexAmount * 6);
 	void* ptr = node->mesh->MapBuffer();
-	auto thread = std::thread(&Planet::MeshCreateData, this, node->mesh, ptr, node->face, node->localPosition, node->dimensions);
-	thread.detach();
+	//auto thread = std::thread(&Planet::MeshCreateData, this, node->mesh, ptr, node->face, node->localPosition, node->dimensions);
+	//thread.detach();
+	MeshCreateData( node, node->mesh, ptr, node->face, node->localPosition, node->dimensions);
 }
 
 

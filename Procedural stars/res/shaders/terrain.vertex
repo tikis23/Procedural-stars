@@ -22,6 +22,6 @@ void main()
 //    fragPos = viewPos.xyz;
 //    gl_Position = projection * viewPos;
     vertex.color = in_color;
-    vertex.normal = in_normal;
+    vertex.normal = normalize(in_position);//in_normal;
     vertex.position = in_position;
 }

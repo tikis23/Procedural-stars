@@ -5,20 +5,24 @@
 #include "imgui/imgui.h"
 #include "Planet.h"
 #include "Buffer.h"
+#include "Timer.h"
+#include "Debug.h"
 
 Renderer::Renderer() {
-    LoadShaders();
-}
-
-Renderer::~Renderer() {
-
-}
-
-void Renderer::LoadShaders() {
     GLint MaxPatchVertices = 0;
     glGetIntegerv(GL_MAX_PATCH_VERTICES, &MaxPatchVertices);
     printf("Max supported patch vertices %d\n", MaxPatchVertices);
     glPatchParameteri(GL_PATCH_VERTICES, 3);
+    LoadShaders();
+    Debug::Init();
+}
+
+Renderer::~Renderer() {
+    Debug::Exit();
+}
+
+void Renderer::LoadShaders() {
+    Timer time;
     m_terrainShader.reset(new Shader);
     m_terrainShader->Load("res/shaders/terrain.vertex", GL_VERTEX_SHADER);
     m_terrainShader->Load("res/shaders/terrain.tesscontrol", GL_TESS_CONTROL_SHADER);
@@ -36,10 +40,8 @@ void Renderer::LoadShaders() {
     m_lightingShader->Load("res/shaders/lighting.fragment", GL_FRAGMENT_SHADER);
     m_lightingShader->Link();
 
-    m_debugShader.reset(new Shader);
-    m_debugShader->Load("res/shaders/debug.vertex", GL_VERTEX_SHADER);
-    m_debugShader->Load("res/shaders/debug.fragment", GL_FRAGMENT_SHADER);
-    m_debugShader->Link();
+
+    std::cout << std::format("Shaders loaded. ({} ms)\n", time.Elapsed());
 }
 
 void Renderer::Draw(Camera* cam, Window* window) {
@@ -77,8 +79,13 @@ void Renderer::Draw(Camera* cam, Window* window) {
                 ImGui::Checkbox("Wireframe", &m_showWireframe);
                 ImGui::Checkbox("SSAO", &m_ssao);
                 ImGui::Checkbox("Back Face Culling", &m_backFaceCulling);
-                ImGui::Checkbox("Debug mode", &m_debugMode);
-                if (m_debugMode) {
+                bool dbg = Debug::GeometryEnabled();
+                ImGui::Checkbox("Debug geometry", &dbg);
+                Debug::GeometryEnable(dbg);
+                dbg = Debug::LightingEnabled();
+                ImGui::Checkbox("Debug lighting", &dbg);
+                Debug::LightingEnable(dbg);
+                if (Debug::LightingEnabled()) {
                     if (ImGui::BeginChild("Debug settings", { 0, 0 }, true)) {
                         ImGui::Checkbox("Color", &debugvars.color);
                         ImGui::Checkbox("Normals", &debugvars.normals);
@@ -127,8 +134,10 @@ void Renderer::Draw(Camera* cam, Window* window) {
         m_terrainShader->uniformMatrix4("model", glm::value_ptr(planets[i].GetPositionModelMatrix()));
         m_terrainShader->uniform3f("u_cameraPos", cam->GetPosition());
 
-        planets[i].Render(cam->GetPosition());
+        planets[i].Render(cam->GetPosition(), m_terrainShader.get());
     }
+    // debug
+    Debug::Render(glm::value_ptr(cam->GetProjection()), glm::value_ptr(cam->GetView()));
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDisable(GL_CULL_FACE);
@@ -148,8 +157,8 @@ void Renderer::Draw(Camera* cam, Window* window) {
 
     // light pass
     auto defferedShader = m_lightingShader.get();
-    if (m_debugMode)
-        defferedShader = m_debugShader.get();
+    if (Debug::LightingEnabled())
+        defferedShader = Debug::GetLightingShader();
     defferedShader->Use();
     gbuffer.BindRead();
     gbuffer.BindColor(defferedShader, 0);
@@ -160,7 +169,7 @@ void Renderer::Draw(Camera* cam, Window* window) {
     defferedShader->uniform1i("u_ssao", m_ssao);
 
     // debug mode uniforms
-    if (m_debugMode) {
+    if (Debug::LightingEnabled()) {
         int dbgv[] = {
             debugvars.color,
             debugvars.normals,

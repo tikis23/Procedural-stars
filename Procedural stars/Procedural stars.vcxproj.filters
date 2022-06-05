@@ -69,6 +69,9 @@
     <ClCompile Include="src\QuadTree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Debug.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Application.h">
@@ -137,6 +140,9 @@
     <ClInclude Include="src\Timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Debug.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\terrain.vertex" />
@@ -144,10 +150,12 @@
     <None Include="res\shaders\terrain.tesseval" />
     <None Include="res\shaders\lighting.vertex" />
     <None Include="res\shaders\lighting.fragment" />
-    <None Include="res\shaders\debug.fragment" />
-    <None Include="res\shaders\debug.vertex" />
+    <None Include="res\shaders\debuglighting.fragment" />
+    <None Include="res\shaders\debuglighting.vertex" />
     <None Include="res\shaders\ssao.fragment" />
     <None Include="res\shaders\ssao.vertex" />
     <None Include="res\shaders\terrain.tesscontrol" />
+    <None Include="res\shaders\debuggeometry.vertex" />
+    <None Include="res\shaders\debuggeometry.fragment" />
   </ItemGroup>
 </Project>

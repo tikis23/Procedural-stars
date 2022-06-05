@@ -14,12 +14,10 @@ private:
 	std::shared_ptr<Shader> m_terrainShader;
 	std::shared_ptr<Shader> m_lightingShader;
 	std::shared_ptr<Shader> m_SSAOShader;
-	std::shared_ptr<Shader> m_debugShader;
 	bool m_backFaceCulling = true;
 	bool m_ssao = true;
 	bool m_showWireframe = false;
 
-	bool m_debugMode = false;
 	struct DEBUG_VARS {
 		bool color = false;
 		bool normals = false;

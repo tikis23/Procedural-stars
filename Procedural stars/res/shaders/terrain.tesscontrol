@@ -2,7 +2,11 @@
 
 layout (vertices = 3) out;
 
-uniform vec3 u_cameraPos;
+uniform int u_lod;
+uniform float u_radius;
+
+uniform mat4 view;
+uniform mat4 model;
 
 in VertexOut {
     vec3 position;
@@ -16,7 +20,22 @@ out TSC {
     vec3 color;
 } vertex_out[];
 
-float GetTessLevel(float Distance0, float Distance1);
+vec3 getmin(vec3 a, vec3 b) {
+    return vec3(
+    min(a.x, b.x),
+    min(a.y, b.y),
+    min(a.z, b.z)
+    );
+}
+vec3 getmax(vec3 a, vec3 b) {
+    return vec3(
+    max(a.x, b.x),
+    max(a.y, b.y),
+    max(a.z, b.z)
+    );
+}
+
+int GetTessLevel(double dist, double size);
 void main()
 {
     // Set the control points of the output patch
@@ -24,29 +43,27 @@ void main()
     vertex_out[gl_InvocationID].normal = vertex_in[gl_InvocationID].normal;
     vertex_out[gl_InvocationID].color = vertex_in[gl_InvocationID].color;
 
-    // Calculate the distance from the camera to the three control points
-    float EyeToVertexDistance0 = distance(u_cameraPos, vertex_out[0].position);
-    float EyeToVertexDistance1 = distance(u_cameraPos, vertex_out[1].position);
-    float EyeToVertexDistance2 = distance(u_cameraPos, vertex_out[2].position);
+    const int MIN_TESS_LEVEL = 1;
+    const int MAX_TESS_LEVEL = 1;
+    float MIN_DISTANCE = 0.1 * (u_radius / pow(2, u_lod));
+    float MAX_DISTANCE = 2 * (u_radius / pow(2, u_lod));
 
-    // Calculate the tessellation levels
-    gl_TessLevelOuter[0] = GetTessLevel(EyeToVertexDistance1, EyeToVertexDistance2);
-    gl_TessLevelOuter[1] = GetTessLevel(EyeToVertexDistance2, EyeToVertexDistance0);
-    gl_TessLevelOuter[2] = GetTessLevel(EyeToVertexDistance0, EyeToVertexDistance1);
-    gl_TessLevelInner[0] = gl_TessLevelOuter[2];
-} 
+    vec3 p0 = (view * model * vec4(vertex_in[0].position, 1)).xyz;
+    vec3 p1 = (view * model * vec4(vertex_in[1].position, 1)).xyz;
+    vec3 p2 = (view * model * vec4(vertex_in[2].position, 1)).xyz;
 
-float GetTessLevel(float Distance0, float Distance1)
-{
-    float AvgDistance = (Distance0 + Distance1) / 2.0;
+    float distance0 = clamp((abs(p0.z)-MIN_DISTANCE) / (MAX_DISTANCE-MIN_DISTANCE), 0.0, 1.0);
+    float distance1 = clamp((abs(p1.z)-MIN_DISTANCE) / (MAX_DISTANCE-MIN_DISTANCE), 0.0, 1.0);
+    float distance2 = clamp((abs(p2.z)-MIN_DISTANCE) / (MAX_DISTANCE-MIN_DISTANCE), 0.0, 1.0);
 
-    if (AvgDistance <= 100.0) {
-        return 10.0;
-    }
-    else if (AvgDistance <= 200.0) {
-        return 2.0;
-    }
-    else {
-        return 1.0;
-    }
+    float tessLevel0 = mix( MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(distance0, distance1) );
+    float tessLevel1 = mix( MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(distance1, distance2) );
+    float tessLevel2 = mix( MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(distance2, distance0) );
+
+    gl_TessLevelOuter[0] = tessLevel0;
+    gl_TessLevelOuter[1] = tessLevel1;
+    gl_TessLevelOuter[2] = tessLevel2;
+
+    gl_TessLevelInner[0] = max(tessLevel0, max(tessLevel1, tessLevel2));
+
 } 

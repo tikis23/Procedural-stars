@@ -14,6 +14,8 @@ struct QUADTREE_NODE {
 	int face;
 	glm::vec3 localPosition;
 	glm::vec3 dimensions;
+	glm::vec3 minPoint;
+	glm::vec3 maxPoint;
 	Mesh* mesh = nullptr;
 	QUADTREE_NODE* parent = nullptr;
 	QUADTREE_NODE* child[4] = { nullptr };
