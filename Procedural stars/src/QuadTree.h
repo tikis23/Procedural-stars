@@ -12,10 +12,11 @@ struct QUADTREE_NODE {
 	int type;
 	int level;
 	int face;
-	glm::vec3 localPosition;
-	glm::vec3 dimensions;
+	glm::vec2 localPosition;
+	int size;
 	glm::vec3 minPoint;
 	glm::vec3 maxPoint;
+	bool ignoreRender = false;
 	Mesh* mesh = nullptr;
 	QUADTREE_NODE* parent = nullptr;
 	QUADTREE_NODE* child[4] = { nullptr };
@@ -28,28 +29,11 @@ struct QUADTREE_NODE {
 				child[i]->level = level + 1;
 				child[i]->face = face;
 				child[i]->parent = this;
-				child[i]->dimensions = dimensions * 0.5f;
-				child[i]->localPosition = localPosition;
-				switch (face)
-				{
-				case 0:
-				case 1:
-					child[i]->localPosition.x += child[i]->dimensions.x * ((i % 2) * 2 - 1);
-					child[i]->localPosition.z += child[i]->dimensions.z * ((i / 2) * 2 - 1);
-					break;
-				case 2:
-				case 3:
-					child[i]->localPosition.y += child[i]->dimensions.y * ((i % 2) * 2 - 1);
-					child[i]->localPosition.z += child[i]->dimensions.z * ((i / 2) * 2 - 1);
-					break;
-				case 4:
-				case 5:
-					child[i]->localPosition.y += child[i]->dimensions.y * ((i % 2) * 2 - 1);
-					child[i]->localPosition.x += child[i]->dimensions.x * ((i / 2) * 2 - 1);
-					break;
-				default:
-					break;
-				}
+				child[i]->size = size / 2;
+				child[i]->localPosition = { 
+					localPosition.x + child[i]->size * ((i % 2) * 2 - 1),
+					localPosition.y + child[i]->size * ((i / 2) * 2 - 1)
+				};
 			}
 		}
 	};

@@ -17,7 +17,7 @@ private:
 	bool m_backFaceCulling = true;
 	bool m_ssao = true;
 	bool m_showWireframe = false;
-
+	bool m_showLod = false;
 	struct DEBUG_VARS {
 		bool color = false;
 		bool normals = false;

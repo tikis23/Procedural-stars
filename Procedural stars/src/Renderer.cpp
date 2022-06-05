@@ -77,6 +77,7 @@ void Renderer::Draw(Camera* cam, Window* window) {
                 if (ImGui::Button("Reload shaders"))
                     LoadShaders();
                 ImGui::Checkbox("Wireframe", &m_showWireframe);
+                ImGui::Checkbox("Show LOD", &m_showLod);
                 ImGui::Checkbox("SSAO", &m_ssao);
                 ImGui::Checkbox("Back Face Culling", &m_backFaceCulling);
                 bool dbg = Debug::GeometryEnabled();
@@ -123,19 +124,17 @@ void Renderer::Draw(Camera* cam, Window* window) {
 
     // render each planet
     gbuffer.BindWrite();
+    m_terrainShader->Use();
+    m_terrainShader->uniformMatrix4("projection", glm::value_ptr(cam->GetProjection()));
+    m_terrainShader->uniformMatrix4("view", glm::value_ptr(cam->GetView()));
+    m_terrainShader->uniform3f("u_cameraPos", cam->GetPosition());
+    m_terrainShader->uniform1i("u_showLod", m_showLod);
     for (int i = 0; i < planets.size(); i++) {
         planets[i].Update();
-        // render terrain
-        m_terrainShader->Use();
-
-        // geometry uniforms
-        m_terrainShader->uniformMatrix4("projection", glm::value_ptr(cam->GetProjection()));
-        m_terrainShader->uniformMatrix4("view", glm::value_ptr(cam->GetView()));
         m_terrainShader->uniformMatrix4("model", glm::value_ptr(planets[i].GetPositionModelMatrix()));
-        m_terrainShader->uniform3f("u_cameraPos", cam->GetPosition());
-
         planets[i].Render(cam->GetPosition(), m_terrainShader.get());
     }
+
     // debug
     Debug::Render(glm::value_ptr(cam->GetProjection()), glm::value_ptr(cam->GetView()));
 

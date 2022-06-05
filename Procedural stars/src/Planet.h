@@ -30,16 +30,16 @@ public:
 private:
 	QuadTree* m_tree;
 	void GenerateMesh(QUADTREE_NODE* node);
-	void RenderLod(QUADTREE_NODE* node, Shader* shader, glm::vec3 cameraPos);
-	glm::vec3 ApplyNoise(glm::vec3 pos);
-	void MeshCreateData(QUADTREE_NODE* node, Mesh* mesh, void* ptr, int face, glm::vec3 localPosition, glm::vec3 dimensions);
+	void RenderLod(QUADTREE_NODE* node, std::vector<QUADTREE_NODE*>& queue, glm::vec3 cameraPos);
+	void MeshCreateData(QUADTREE_NODE* node,void* ptr);
+	void CreateFace(std::vector<Vertex>* data, int face);
 
 	float m_radius;
 	float m_maxHeight;
 
 
-	unsigned int m_lodAmount;
-	unsigned int m_nodeVertexAmount;
+	int m_lodAmount;
+	int m_nodeVertexAmount;
 	glm::mat4 m_modelPos;
 	glm::mat4 m_modelRot;
 	glm::vec3 m_position;

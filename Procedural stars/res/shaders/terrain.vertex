@@ -1,27 +1,22 @@
 #version 410 core
 
 layout(location = 0) in vec3 in_position;
-layout(location = 1) in vec3 in_normal;
-layout(location = 2) in vec3 in_color;
+layout(location = 1) in vec3 in_color;
+layout(location = 2) in int in_edge;
 
 out VertexOut {
     vec3 position;
     vec3 normal;
     vec3 color;
+    int edge;
 } vertex;
+
+uniform int u_showLod;
 
 void main()
 {
-//    mat3 normalMatrix = transpose(inverse(mat3(model)));
-//    mat4 viewModel = view * model;
-//    vec4 viewPos = viewModel * vec4(in_position, 1);
-//
-//    normal = normalize(in_normal);
-//    v_color = vec4(in_color.xyz, 1);
-//
-//    fragPos = viewPos.xyz;
-//    gl_Position = projection * viewPos;
-    vertex.color = in_color;
+    vertex.edge = in_edge;
+    vertex.color = in_color * u_showLod + vec3(1, 1, 0) * (1 - u_showLod);
     vertex.normal = normalize(in_position);//in_normal;
     vertex.position = in_position;
 }
