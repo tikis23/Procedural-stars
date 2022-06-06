@@ -25,6 +25,7 @@ Application::~Application()
 
 bool Application::Init()
 {
+    std::ios_base::sync_with_stdio(false);
     std::cout << glfwGetVersionString() << "\n";
     glfwSetErrorCallback(ErrorCallback);
     // init glfw
@@ -116,6 +117,7 @@ bool Application::Start()
                 if (ImGui::BeginTabItem("Info")) {
                     ImGui::Text("");
                     ImGui::Text(std::format("{} FPS | {} ms", FPS, frametime).c_str());
+                    ImGui::Checkbox("Enable timers", &TIMER_ENABLE_PRINT);
                     ImGui::EndTabItem();
                 }
                 ImGui::EndTabBar();

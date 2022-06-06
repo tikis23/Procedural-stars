@@ -24,7 +24,7 @@ public:
 	void* MapBuffer();
 	void UnmapBuffer();
 
-	static int TriangleCount;
+	static int VertexCount;
 private:
 	std::vector<Vertex> m_vertexData;
 	unsigned int m_VAO;

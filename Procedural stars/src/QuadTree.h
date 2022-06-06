@@ -17,29 +17,13 @@ struct QUADTREE_NODE {
 	glm::vec3 minPoint;
 	glm::vec3 maxPoint;
 	bool ignoreRender = false;
+	double lastRenderTime = 0;
 	Mesh* mesh = nullptr;
 	QUADTREE_NODE* parent = nullptr;
 	QUADTREE_NODE* child[4] = { nullptr };
-	void Split() {
-		if (type == QUADTREENODETYPE_LEAF) {
-			type = QUADTREENODETYPE_NODE;
-			for (int i = 0; i < 4; i++) {
-				child[i] = new QUADTREE_NODE;
-				child[i]->type = QUADTREENODETYPE_LEAF;
-				child[i]->level = level + 1;
-				child[i]->face = face;
-				child[i]->parent = this;
-				child[i]->size = size / 2;
-				child[i]->localPosition = { 
-					localPosition.x + child[i]->size * ((i % 2) * 2 - 1),
-					localPosition.y + child[i]->size * ((i / 2) * 2 - 1)
-				};
-			}
-		}
-	};
-	void Delete() {
-
-	}
+	~QUADTREE_NODE();
+	void Split();
+	void Merge();
 };
 
 class QuadTree {

@@ -99,8 +99,8 @@ void Renderer::Draw(Camera* cam, Window* window) {
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Info")) {
-                ImGui::Text(("\n\n\n\nTriangles drawn: "+std::to_string(Mesh::TriangleCount)).c_str());
-                Mesh::TriangleCount = 0;
+                ImGui::Text(("\n\n\n\nVertex count: " + std::to_string(Mesh::VertexCount)).c_str());
+                Mesh::VertexCount = 0;
                 ImGui::EndTabItem();
             }
             ImGui::EndTabBar();

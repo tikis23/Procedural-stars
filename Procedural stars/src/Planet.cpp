@@ -10,6 +10,10 @@
 #include "Timer.h"
 #include "Debug.h"
 
+#define MAX_MESHES_GENERATED_PER_FRAME 20
+#define NODE_CLEANUP_INTERVAL 20
+#define NODE_LIFETIME 10
+
 glm::vec3 MapToSphere(glm::vec3 pos) {
 	double sqrx = pos.x * pos.x;
 	double sqry = pos.y * pos.y;
@@ -99,7 +103,7 @@ void Planet::Update() {
 	m_modelRot = glm::rotate(m_modelRot, glm::radians(m_rotation.z), glm::vec3(0, 0, 1));
 }
 
-void Planet::RenderLod(QUADTREE_NODE* node, std::vector<QUADTREE_NODE*>& queue, glm::vec3 cameraPos) {
+void Planet::GetLod(QUADTREE_NODE* node, std::vector<QUADTREE_NODE*>& queue, glm::vec3 cameraPos) {
 	node->ignoreRender = false;
 	if (node->mesh != nullptr && node->mesh->IsBuffered()) {
 		double dist = std::max(0.0, GetAABBDistance(cameraPos, node->minPoint, node->maxPoint) - m_maxHeight);
@@ -114,32 +118,55 @@ void Planet::RenderLod(QUADTREE_NODE* node, std::vector<QUADTREE_NODE*>& queue, 
 		}
 		if (error > maxError && node->level + 1 < m_lodAmount) {
 			node->Split();
-			RenderLod(node->child[0], queue, cameraPos);
-			RenderLod(node->child[1], queue, cameraPos);
-			RenderLod(node->child[2], queue, cameraPos);
-			RenderLod(node->child[3], queue, cameraPos);
+			GetLod(node->child[0], queue, cameraPos);
+			GetLod(node->child[1], queue, cameraPos);
+			GetLod(node->child[2], queue, cameraPos);
+			GetLod(node->child[3], queue, cameraPos);
 			return;
 		}
 	}
 	queue.push_back(node);
 }
 
+bool Planet::Cleanup(QUADTREE_NODE* node, double currentTime, int& meshCount) {
+	if (node->type == QUADTREENODETYPE_NODE) {
+		int clean = 0;
+		for (int i = 0; i < 4; i++) {
+			clean += Cleanup(node->child[i], currentTime, meshCount);
+		}
+		if (clean == 4) {
+			node->Merge();
+			meshCount += 4;
+		}
+	}
+	if (node->mesh != nullptr && node->mesh->IsBuffered()) {
+		if (node->lastRenderTime + NODE_LIFETIME < currentTime) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void Planet::Render(glm::vec3 cameraPos, Shader* shader) {
+	double currentTime = glfwGetTime();
+	// select nodes for rendering
 	std::vector<QUADTREE_NODE*> queue;
 	for (int i = 0; i < 6; i++) {
 		auto branch = m_tree->GetBranch(i);
-		RenderLod(branch, queue, cameraPos);
+		GetLod(branch, queue, cameraPos);
 	}
+
+	// render queued nodes
+	int limitCounter = 0;
 	for (int i = 0; i < queue.size(); i++) {
 		auto node = queue[i];
-		if (node->mesh == nullptr) {
+		// generate mesh if node doesn't have one
+		if (node->mesh == nullptr && limitCounter < MAX_MESHES_GENERATED_PER_FRAME) {
 			GenerateMesh(node);
+			limitCounter++;
 		}
-		if (node->mesh->NeedUnmap()) {
-			node->mesh->UnmapBuffer();
-			node->mesh->NeedUnmap(false);
-			node->mesh->IsBuffered(true);
-		}
+
+		// if node can't be rendered render parent
 		auto parent = node->parent;
 		if (parent != nullptr) {
 			for (int j = 0; j < 4; j++) {
@@ -152,11 +179,41 @@ void Planet::Render(glm::vec3 cameraPos, Shader* shader) {
 				}
 			}
 		}
-		if (node->mesh->IsBuffered() && !node->ignoreRender) {
-			shader->uniform4i("u_edges", 0, 0, 0, 0);
-			node->mesh->Draw(GL_PATCHES);
-			DrawBoundingBox(node->minPoint, node->maxPoint);
+		if (node->mesh != nullptr) {
+			// unmap buffer
+			if (node->mesh->NeedUnmap()) {
+				node->mesh->UnmapBuffer();
+				node->mesh->NeedUnmap(false);
+				node->mesh->IsBuffered(true);
+			}
+			// render
+			if (node->mesh->IsBuffered() && !node->ignoreRender) {
+				shader->uniform4i("u_edges", 0, 0, 0, 0);
+				node->mesh->Draw(GL_PATCHES);
+				DrawBoundingBox(node->minPoint, node->maxPoint);
+
+				// update parent render time so it isn't deleted in cleanup
+				node->lastRenderTime = currentTime;
+				auto nextParent = node->parent;
+				while (nextParent != nullptr) {
+					nextParent->lastRenderTime = currentTime;
+					nextParent = nextParent->parent;
+				}
+			}
 		}
+	}
+
+	// node cleanup
+	if (currentTime > m_nodeCleanupTimer) {
+		Timer cleanupTimer;
+		m_nodeCleanupTimer = currentTime + NODE_CLEANUP_INTERVAL;
+		int meshCount = 0;
+		for (int i = 0; i < 6; i++) {
+			auto branch = m_tree->GetBranch(i);
+			Cleanup(branch, currentTime, meshCount);
+		}
+		if (TIMER_ENABLE_PRINT)
+			std::cout << std::format("[NODE CLEANUP] removed {} meshes in {}ms\n", meshCount, cleanupTimer.Elapsed());
 	}
 }
 
@@ -165,7 +222,7 @@ void Planet::CreateFace(std::vector<Vertex>* data, int face) {
 }
 
 void Planet::MeshCreateData(QUADTREE_NODE* node,void* ptr) {
-	//ScopedTimer timer("Mesh created");
+	ScopedTimer timer("MESH GEN");
 	auto data = node->mesh->GetVertexData();
 	data->clear();
 	

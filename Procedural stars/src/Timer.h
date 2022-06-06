@@ -4,6 +4,8 @@
 #include <string>
 #include <chrono>
 
+extern bool TIMER_ENABLE_PRINT;
+
 class Timer {
 public:
 	Timer() {
@@ -23,7 +25,8 @@ public:
 	}
 
 	void PrintElapsed(const std::string& name) {
-		std::cout << std::format("[TIMER] {} - {} ms\n", name, Elapsed());
+		if (TIMER_ENABLE_PRINT)
+			std::cout << std::format("[{}] {}ms\n", name, Elapsed());
 	}
 
 private:
@@ -35,8 +38,10 @@ public:
 	ScopedTimer(const std::string& name)
 		: m_Name(name) {}
 	~ScopedTimer() {
-		float time = m_Timer.Elapsed();
-		std::cout << std::format("[TIMER] {} - {} ms\n", m_Name, time);
+		if (TIMER_ENABLE_PRINT) {
+			float time = m_Timer.Elapsed();
+			std::cout << std::format("[{}] {}ms\n", m_Name, time);
+		}
 	}
 private:
 	std::string m_Name;

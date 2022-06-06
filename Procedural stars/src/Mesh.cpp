@@ -14,7 +14,7 @@ void Mesh::Draw(GLenum mode) {
 	if (m_buffered) {
 		glBindVertexArray(m_VAO);
 		glDrawArrays(mode, 0, m_vertexData.size());
-		TriangleCount += m_vertexData.size() / 3;
+		VertexCount += m_vertexData.size();
 	}
 }
 
@@ -59,4 +59,4 @@ void Mesh::UnmapBuffer() {
 	glUnmapBuffer(GL_ARRAY_BUFFER);
 }
 
-int Mesh::TriangleCount = 0;
+int Mesh::VertexCount = 0;
