@@ -35,6 +35,7 @@ void QUADTREE_NODE::Split() {
 			child[i]->type = QUADTREENODETYPE_LEAF;
 			child[i]->level = level + 1;
 			child[i]->face = face;
+			child[i]->index = i;
 			child[i]->parent = this;
 			child[i]->size = size / 2;
 			child[i]->localPosition = {

@@ -34,6 +34,7 @@ private:
 	void MeshCreateData(QUADTREE_NODE* node,void* ptr);
 	void CreateFace(std::vector<Vertex>* data, int face);
 	bool Cleanup(QUADTREE_NODE* node, double currentTime, int& meshCount);
+	QUADTREE_NODE* GetNeighbor(QUADTREE_NODE* node, int dir);
 
 	float m_radius;
 	float m_maxHeight;

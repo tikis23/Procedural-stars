@@ -10,7 +10,7 @@
 #include "Timer.h"
 #include "Debug.h"
 
-#define MAX_MESHES_GENERATED_PER_FRAME 20
+#define MAX_MESHES_GENERATED_PER_FRAME 10
 #define NODE_CLEANUP_INTERVAL 20
 #define NODE_LIFETIME 10
 
@@ -103,6 +103,61 @@ void Planet::Update() {
 	m_modelRot = glm::rotate(m_modelRot, glm::radians(m_rotation.z), glm::vec3(0, 0, 1));
 }
 
+// dir: 0 - top, 1 - bottom, 2 - left, 3 - right
+QUADTREE_NODE* Planet::GetNeighbor(QUADTREE_NODE * node, int dir) {
+	auto parent = node->parent;
+	if (parent == nullptr)
+		return nullptr;
+	if (dir == 0) {
+		if (parent->child[2] == node)
+			return parent->child[3];
+		if (parent->child[0] == node)
+			return parent->child[1];
+		auto newNode = GetNeighbor(parent, dir);
+		if (newNode == nullptr || newNode->type == QUADTREENODETYPE_LEAF)
+			return newNode;
+		if (parent->child[3] == node)
+			return newNode->child[2];
+		return newNode->child[0];
+	}
+	if (dir == 1) {
+		if (parent->child[3] == node)
+			return parent->child[2];
+		if (parent->child[1] == node)
+			return parent->child[0];
+		auto newNode = GetNeighbor(parent, dir);
+		if (newNode == nullptr || newNode->type == QUADTREENODETYPE_LEAF)
+			return newNode;
+		if (parent->child[2] == node)
+			return newNode->child[3];
+		return newNode->child[1];
+	}
+	if (dir == 2) {
+		if (parent->child[2] == node)
+			return parent->child[0];
+		if (parent->child[3] == node)
+			return parent->child[1];
+		auto newNode = GetNeighbor(parent, dir);
+		if (newNode == nullptr || newNode->type == QUADTREENODETYPE_LEAF)
+			return newNode;
+		if (parent->child[0] == node)
+			return newNode->child[2];
+		return newNode->child[3];
+	}
+	if (dir == 3) {
+		if (parent->child[0] == node)
+			return parent->child[2];
+		if (parent->child[1] == node)
+			return parent->child[3];
+		auto newNode = GetNeighbor(parent, dir);
+		if (newNode == nullptr || newNode->type == QUADTREENODETYPE_LEAF)
+			return newNode;
+		if (parent->child[2] == node)
+			return newNode->child[0];
+		return newNode->child[1];
+	}
+}
+
 void Planet::GetLod(QUADTREE_NODE* node, std::vector<QUADTREE_NODE*>& queue, glm::vec3 cameraPos) {
 	node->ignoreRender = false;
 	if (node->mesh != nullptr && node->mesh->IsBuffered()) {
@@ -126,6 +181,414 @@ void Planet::GetLod(QUADTREE_NODE* node, std::vector<QUADTREE_NODE*>& queue, glm
 		}
 	}
 	queue.push_back(node);
+
+	// get edge nodes for crack filling
+	if (node->parent != nullptr) {
+
+		// determine edge node is on
+		std::vector<int> edgePath;
+		int edgey = -1;
+		int edgex = -1;
+		auto otherParent = node;
+		if (node->index == 0) {
+			edgey = 1;
+			while (otherParent->parent != nullptr) {
+				if (otherParent->parent->index == 2 || otherParent->parent->index == 3) {
+					edgey = -1;
+					break;
+				}
+				if (otherParent->parent->index == -1) {
+					break;
+				}
+				if (otherParent->parent->index == 1) {
+					edgePath.push_back(1);
+				}
+				else {
+					edgePath.push_back(0);
+				}
+				otherParent = otherParent->parent;
+			}
+		}
+		if (node->index == 1) {
+			edgex = 1;
+			while (otherParent->parent != nullptr) {
+				if (otherParent->parent->index == 0 || otherParent->parent->index == 2) {
+					edgex = -1;
+					break;
+				}
+				if (otherParent->parent->index == -1) {
+					break;
+				}
+				if (otherParent->parent->index == 3) {
+					edgePath.push_back(3);
+				}
+				else {
+					edgePath.push_back(1);
+				}
+				otherParent = otherParent->parent;
+			}
+		}
+		if (node->index == 2) {
+			edgex = 0;
+			while (otherParent->parent != nullptr) {
+				if (otherParent->parent->index == 1 || otherParent->parent->index == 3) {
+					edgex = -1;
+					break;
+				}
+				if (otherParent->parent->index == -1) {
+					break;
+				}
+				if (otherParent->parent->index == 0) {
+					edgePath.push_back(0);
+				}
+				else {
+					edgePath.push_back(2);
+				}
+				otherParent = otherParent->parent;
+			}
+		}
+		if (node->index == 3) {
+			edgey = 0;
+			while (otherParent->parent != nullptr) {
+				if (otherParent->parent->index == 0 || otherParent->parent->index == 1) {
+					edgey = -1;
+					break;
+				}
+				if (otherParent->parent->index == -1) {
+					break;
+				}
+				if (otherParent->parent->index == 2) {
+					edgePath.push_back(2);
+				}
+				else {
+					edgePath.push_back(3);
+				}
+				otherParent = otherParent->parent;
+			}
+		}
+		// find edge neighbours
+		if (edgey == 0) {
+			switch (node->face)
+			{
+			case PLANET_FACE::TOP:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::LEFT);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[-2 + edgePath[i]] != nullptr) {
+						branch = branch->child[-2 + edgePath[i]];
+					}
+				}
+				branch->edge[2] = 1;
+			}
+			break;
+			case PLANET_FACE::BOTTOM:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::LEFT);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[5 - edgePath[i]] != nullptr) {
+						branch = branch->child[5 - edgePath[i]];
+					}
+				}
+				branch->edge[3] = 1;
+			}
+			break;
+			case PLANET_FACE::LEFT:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::TOP);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[edgePath[i]] != nullptr) {
+						branch = branch->child[edgePath[i]];
+					}
+				}
+				branch->edge[3] = 1;
+			}
+			break;
+			case PLANET_FACE::RIGHT:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::TOP);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[-2 + edgePath[i]] != nullptr) {
+						branch = branch->child[-2 + edgePath[i]];
+					}
+				}
+				branch->edge[2] = 1;
+			}
+			break;
+			case PLANET_FACE::FRONT:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::LEFT);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[edgePath[i] % 3] != nullptr) {
+						branch = branch->child[edgePath[i] % 3];
+					}
+				}
+				branch->edge[1] = 1;
+			}
+			break;
+			case PLANET_FACE::BACK:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::LEFT);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[(edgePath[i] - 2) * 2 + 1] != nullptr) {
+						branch = branch->child[(edgePath[i] - 2) * 2 + 1];
+					}
+				}
+				branch->edge[0] = 1;
+			}
+			break;
+			default:
+				break;
+			}
+		}
+		else if (edgey == 1) {
+			switch (node->face)
+			{
+			case PLANET_FACE::TOP:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::RIGHT);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[2 + edgePath[i]] != nullptr) {
+						branch = branch->child[2 + edgePath[i]];
+					}
+				}
+				branch->edge[3] = 1;
+			}
+			break;
+			case PLANET_FACE::BOTTOM:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::RIGHT);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[1 - edgePath[i]] != nullptr) {
+						branch = branch->child[1 - edgePath[i]];
+					}
+				}
+				branch->edge[2] = 1;
+			}
+			break;
+			case PLANET_FACE::LEFT:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::BOTTOM);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[3 - edgePath[i]] != nullptr) {
+						branch = branch->child[3 - edgePath[i]];
+					}
+				}
+				branch->edge[3] = 1;
+			}
+			break;
+			case PLANET_FACE::RIGHT:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::BOTTOM);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[1 - edgePath[i]] != nullptr) {
+						branch = branch->child[1 - edgePath[i]];
+					}
+				}
+				branch->edge[2] = 1;
+			}
+			break;
+			case PLANET_FACE::FRONT:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::RIGHT);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[edgePath[i] * 2] != nullptr) {
+						branch = branch->child[edgePath[i]  * 2];
+					}
+				}
+				branch->edge[1] = 1;
+			}
+			break;
+			case PLANET_FACE::BACK:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::RIGHT);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[4 - (edgePath[i] * 2 + 1)] != nullptr) {
+						branch = branch->child[4 -(edgePath[i] * 2 + 1)];
+					}
+				}
+				branch->edge[0] = 1;
+			}
+			break;
+			default:
+				break;
+			}
+		}
+		if (edgex == 0) {
+			switch (node->face)
+			{
+			case PLANET_FACE::TOP:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::FRONT);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[1 + edgePath[i]] != nullptr) {
+						branch = branch->child[1 + edgePath[i]];
+					}
+				}
+				branch->edge[0] = 1;
+			}
+			break;
+			case PLANET_FACE::BOTTOM:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::BACK);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[1 + edgePath[i]] != nullptr) {
+						branch = branch->child[1 + edgePath[i]];
+					}
+				}
+				branch->edge[0] = 1;
+			}
+			break;
+			case PLANET_FACE::LEFT:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::BACK);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[std::clamp(1 + edgePath[i], 2, 3)] != nullptr) {
+						branch = branch->child[std::clamp(1 + edgePath[i], 2, 3)];
+					}
+				}
+				branch->edge[3] = 1;
+			}
+			break;
+			case PLANET_FACE::RIGHT:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::FRONT);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[std::clamp(edgePath[i], 0, 1)] != nullptr) {
+						branch = branch->child[std::clamp(edgePath[i], 0, 1)];
+					}
+				}
+				branch->edge[2] = 1;
+			}
+			break;
+			case PLANET_FACE::FRONT:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::BOTTOM);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[edgePath[i] + 1] != nullptr) {
+						branch = branch->child[edgePath[i] + 1];
+					}
+				}
+				branch->edge[0] = 1;
+			}
+			break;
+			case PLANET_FACE::BACK:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::TOP);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[1 + edgePath[i]] != nullptr) {
+						branch = branch->child[1 + edgePath[i]];
+					}
+				}
+				branch->edge[0] = 1;
+			}
+			break;
+			default:
+				break;
+			}
+		}
+		else if (edgex == 1) {
+			switch (node->face)
+			{
+			case PLANET_FACE::TOP:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::BACK);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[-1 + edgePath[i]] != nullptr) {
+						branch = branch->child[-1 + edgePath[i]];
+					}
+				}
+				branch->edge[1] = 1;
+			}
+			break;
+			case PLANET_FACE::BOTTOM:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::FRONT);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[-1 + edgePath[i]] != nullptr) {
+						branch = branch->child[-1 + edgePath[i]];
+					}
+				}
+				branch->edge[1] = 1;
+			}
+			break;
+			case PLANET_FACE::LEFT:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::FRONT);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[5 - std::clamp(1 + edgePath[i], 2, 3)] != nullptr) {
+						branch = branch->child[5 - std::clamp(1 + edgePath[i], 2, 3)];
+					}
+				}
+				branch->edge[3] = 1;
+			}
+			break;
+			case PLANET_FACE::RIGHT:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::BACK);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[1 - std::clamp(edgePath[i] - 1, 0, 1)] != nullptr) {
+						branch = branch->child[1 - std::clamp(edgePath[i] - 1, 0, 1)];
+					}
+				}
+				branch->edge[2] = 1;
+			}
+			break;
+			case PLANET_FACE::FRONT:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::TOP);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[-1 + edgePath[i]] != nullptr) {
+						branch = branch->child[-1 + edgePath[i]];
+					}
+				}
+				branch->edge[1] = 1;
+			}
+			break;
+			case PLANET_FACE::BACK:
+			{
+				auto branch = m_tree->GetBranch(PLANET_FACE::BOTTOM);
+				for (int i = edgePath.size() - 1; i >= 0; i--) {
+					if (branch->child[-1 + edgePath[i]] != nullptr) {
+						branch = branch->child[-1 + edgePath[i]];
+					}
+				}
+				branch->edge[1] = 1;
+			}
+			break;
+			default:
+				break;
+			}
+		}
+
+		// same face neighbours
+		auto parent = node->parent;
+		if (parent != nullptr) {
+			if (node->index == 0) {
+				auto neighbor = GetNeighbor(parent, 1);
+				if (neighbor != nullptr) {
+					neighbor->edge[0] = 1;
+				}
+			}
+			else if (node->index == 1) {
+				auto neighbor = GetNeighbor(parent, 2);
+				if (neighbor != nullptr) {
+					neighbor->edge[3] = 1;
+				}
+			}
+			else if (node->index == 2) {
+				auto neighbor = GetNeighbor(parent, 3);
+				if (neighbor != nullptr) {
+					neighbor->edge[2] = 1;
+				}
+			}
+			else if (node->index == 3) {
+				auto neighbor = GetNeighbor(parent, 0);
+				if (neighbor != nullptr) {
+					neighbor->edge[1] = 1;
+				}
+			}
+		}
+	}
 }
 
 bool Planet::Cleanup(QUADTREE_NODE* node, double currentTime, int& meshCount) {
@@ -148,6 +611,7 @@ bool Planet::Cleanup(QUADTREE_NODE* node, double currentTime, int& meshCount) {
 }
 
 void Planet::Render(glm::vec3 cameraPos, Shader* shader) {
+	Timer timer;
 	double currentTime = glfwGetTime();
 	// select nodes for rendering
 	std::vector<QUADTREE_NODE*> queue;
@@ -155,7 +619,7 @@ void Planet::Render(glm::vec3 cameraPos, Shader* shader) {
 		auto branch = m_tree->GetBranch(i);
 		GetLod(branch, queue, cameraPos);
 	}
-
+	std::cout << timer.Elapsed() << '\n';
 	// render queued nodes
 	int limitCounter = 0;
 	for (int i = 0; i < queue.size(); i++) {
@@ -188,7 +652,11 @@ void Planet::Render(glm::vec3 cameraPos, Shader* shader) {
 			}
 			// render
 			if (node->mesh->IsBuffered() && !node->ignoreRender) {
-				shader->uniform4i("u_edges", 0, 0, 0, 0);
+				shader->uniformArr1i("u_edges", 4, node->edge);
+				node->edge[0] = 0;
+				node->edge[1] = 0;
+				node->edge[2] = 0;
+				node->edge[3] = 0;
 				node->mesh->Draw(GL_PATCHES);
 				DrawBoundingBox(node->minPoint, node->maxPoint);
 
@@ -232,6 +700,20 @@ void Planet::MeshCreateData(QUADTREE_NODE* node,void* ptr) {
 			floor(((node->level + 1) % 3) * 0.55),
 			floor(((node->level + 2) % 3) * 0.55)
 		};
+
+		//color = { 1, 1, 1 };
+		//if (node->parent != nullptr) {
+		//	if (node->index == 0)
+		//		color = { 1, 0, 0 };
+		//	if (node->index == 1)
+		//		color = { 0, 1, 0 };
+		//	if (node->index == 2)
+		//		color = { 0, 0, 1 };
+		//	if (node->index == 3)
+		//		color = { 1, 1, 0 };
+		//}
+
+
 		glm::vec3 rotation(0);
 		float angle = 0;
 		switch (node->face)

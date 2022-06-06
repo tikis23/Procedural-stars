@@ -17,21 +17,6 @@ out TSC {
     vec3 color;
 } vertex_out[];
 
-vec3 getmin(vec3 a, vec3 b) {
-    return vec3(
-    min(a.x, b.x),
-    min(a.y, b.y),
-    min(a.z, b.z)
-    );
-}
-vec3 getmax(vec3 a, vec3 b) {
-    return vec3(
-    max(a.x, b.x),
-    max(a.y, b.y),
-    max(a.z, b.z)
-    );
-}
-
 int GetTessLevel(double dist, double size);
 void main()
 {
@@ -47,46 +32,26 @@ void main()
         // u_edges[2] = left
         // u_edges[3] = right
 
-        gl_TessLevelOuter[1] = 1;
         // top bottom
         gl_TessLevelOuter[2] = 1;
-        if (vertex_in[2].edge == 1 && u_edges[1] == 1 || vertex_in[2].edge == 2 && u_edges[0] == 1) {
+        if (vertex_in[2].edge == 1 && u_edges[1] > 0) {
+            gl_TessLevelOuter[2] = 2;
+        } 
+        else if (vertex_in[2].edge == 2 && u_edges[0] > 0){
             gl_TessLevelOuter[2] = 2;
         }
 
         // left right
         gl_TessLevelOuter[0] = 1;
-        if (vertex_in[0].edge == 1 && u_edges[2] == 1 || vertex_in[0].edge == 2 && u_edges[3] == 1) {
+        if (vertex_in[0].edge == 1 && u_edges[2] > 0) {
+            gl_TessLevelOuter[0] = 2;
+        }
+        else if (vertex_in[0].edge == 2 && u_edges[3] > 0) {
             gl_TessLevelOuter[0] = 2;
         }
 
         // constant
-        gl_TessLevelInner[0] = 2;
-    }
-
-
-    { ////////////////////////////////////////////////////// dynamic lod
-//    const int MIN_TESS_LEVEL = 1;
-//    const int MAX_TESS_LEVEL = 1;
-//    float MIN_DISTANCE = 0.1 * (u_radius / pow(2, u_lod));
-//    float MAX_DISTANCE = 2 * (u_radius / pow(2, u_lod));
-//
-//    vec3 p0 = (view * model * vec4(vertex_in[0].position, 1)).xyz;
-//    vec3 p1 = (view * model * vec4(vertex_in[1].position, 1)).xyz;
-//    vec3 p2 = (view * model * vec4(vertex_in[2].position, 1)).xyz;
-//
-//    float distance0 = clamp((abs(p0.z)-MIN_DISTANCE) / (MAX_DISTANCE-MIN_DISTANCE), 0.0, 1.0);
-//    float distance1 = clamp((abs(p1.z)-MIN_DISTANCE) / (MAX_DISTANCE-MIN_DISTANCE), 0.0, 1.0);
-//    float distance2 = clamp((abs(p2.z)-MIN_DISTANCE) / (MAX_DISTANCE-MIN_DISTANCE), 0.0, 1.0);
-//
-//    float tessLevel0 = mix( MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(distance0, distance1) );
-//    float tessLevel1 = mix( MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(distance1, distance2) );
-//    float tessLevel2 = mix( MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(distance2, distance0) );
-//
-//    gl_TessLevelOuter[0] = tessLevel0;
-//    gl_TessLevelOuter[1] = tessLevel1;
-//    gl_TessLevelOuter[2] = tessLevel2;
-//
-//    gl_TessLevelInner[0] = max(tessLevel0, max(tessLevel1, tessLevel2));
+        gl_TessLevelOuter[1] = 1;
+        gl_TessLevelInner[0] = 1;
     }
 } 

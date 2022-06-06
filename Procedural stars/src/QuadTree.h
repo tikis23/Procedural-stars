@@ -12,8 +12,9 @@ struct QUADTREE_NODE {
 	int type;
 	int level;
 	int face;
-	glm::vec2 localPosition;
 	int size;
+	int index = -1;
+	glm::vec2 localPosition;
 	glm::vec3 minPoint;
 	glm::vec3 maxPoint;
 	bool ignoreRender = false;
@@ -21,6 +22,8 @@ struct QUADTREE_NODE {
 	Mesh* mesh = nullptr;
 	QUADTREE_NODE* parent = nullptr;
 	QUADTREE_NODE* child[4] = { nullptr };
+	QUADTREE_NODE* neighbour[4] = { nullptr };
+	int edge[4] = { 0 };
 	~QUADTREE_NODE();
 	void Split();
 	void Merge();
