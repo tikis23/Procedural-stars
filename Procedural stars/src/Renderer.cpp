@@ -52,6 +52,8 @@ void Renderer::Draw(Camera* cam, Window* window) {
     static std::vector<Planet> planets;
     static bool once = true;
     if (once) {
+        window->AddResizeCallback(std::bind(&GBuffer::ResizeCallback, gbuffer, std::placeholders::_1, std::placeholders::_2));
+        window->AddResizeCallback(std::bind(&SSAOBuffer::ResizeCallback, ssaobuffer, std::placeholders::_1, std::placeholders::_2));
         planets.push_back({});
         once = false;
     }
@@ -74,6 +76,14 @@ void Renderer::Draw(Camera* cam, Window* window) {
     if (ImGui::Begin("Settings")) {
         if (ImGui::BeginTabBar("")) {
             if (ImGui::BeginTabItem("Rendering")) {
+                if (ImGui::Button("Windowed"))
+                    window->ChangeMode(Window::WINDOW_MODE::WINDOWED);
+                ImGui::SameLine();
+                if (ImGui::Button("Borderless"))
+                    window->ChangeMode(Window::WINDOW_MODE::BORDERLESS);
+                ImGui::SameLine();
+                if (ImGui::Button("Fullscreen"))
+                    window->ChangeMode(Window::WINDOW_MODE::FULLSCREEN);
                 if (ImGui::Button("Reload shaders"))
                     LoadShaders();
                 ImGui::Checkbox("Wireframe", &m_showWireframe);

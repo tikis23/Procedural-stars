@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <string>
 #include <map>
+#include <vector>
+#include <functional>
 
 #include "Input.h"
 
@@ -28,6 +30,9 @@ public:
 	~Window();
 	void MakeContextCurrent();
 	void Update();
+	void AddResizeCallback(std::function<void(std::uint32_t WinSizeX, std::uint32_t WinSizeY)>);
+	void ChangeMode(WINDOW_MODE newmode);
+	void ChangeMode(WINDOW_MODE newmode, std::uint32_t windowWidth, std::uint32_t windowHeight);
 	GLFWwindow* Handle() { return m_handle; };
 	std::uint32_t GetWidth() { return m_parameters.windowWidth; };
 	std::uint32_t GetHeight() { return m_parameters.windowHeight; };
@@ -40,8 +45,13 @@ private:
 	static void WindowPosCallback(GLFWwindow* window, int xpos, int ypos);
 	static void WindowIconifyCallback(GLFWwindow* window, int iconified);
 
+	std::uint32_t m_WindowedWindowWidth;
+	std::uint32_t m_WindowedWindowHeight;
+	std::int32_t  m_WindowedWindowPosX;
+	std::int32_t  m_WindowedWindowPosY;
+
 	GLFWwindow* m_handle;
 	WindowParameters m_parameters;
-
+	std::vector<std::function<void(std::uint32_t WinSizeX, std::uint32_t WinSizeY)>> m_resizeCallbacks;
 	static std::map<GLFWwindow*, Window*> sm_windows;
 };

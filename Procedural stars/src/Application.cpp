@@ -44,7 +44,7 @@ bool Application::Init()
     windowParams.windowHeight = 800;
     windowParams.windowPosX = 400;
     windowParams.windowPosY = 200;
-    windowParams.resizeable = false;
+    windowParams.resizeable = true;
     m_window.reset(new Window(windowParams));
     m_window->MakeContextCurrent();
     glfwSwapInterval(0); // frame limit off
@@ -78,8 +78,7 @@ bool Application::Init()
 bool Application::Start()
 {
     m_running = true;
-    //Camera cam({}, { -15000.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f });
-    Camera cam({}, {3024.5, 10053, 4007.9}, {0.0f, 0.0f, 0.0f});
+    Camera cam({}, { -15000.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f });
     Timer frametimer;
     int frames = 0;
     float frametime = 0;

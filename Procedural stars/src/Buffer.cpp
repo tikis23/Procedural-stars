@@ -9,6 +9,48 @@ float lerp(float a, float b, float f) {
 }
 
 GBuffer::GBuffer(std::uint32_t width, std::uint32_t height) {
+    Create(width, height);
+}
+
+GBuffer::~GBuffer() {
+    Delete();
+}
+
+void GBuffer::ResizeCallback(std::uint32_t width, std::uint32_t height) {
+    Delete();
+    Create(width, height);
+    std::cout << "heelo from GBuffer\n";
+}
+
+void GBuffer::BindWrite() {
+    glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void GBuffer::BindRead() {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void GBuffer::BindColor(Shader* shader, int pos) {
+    glActiveTexture(GL_TEXTURE0 + pos);
+    glBindTexture(GL_TEXTURE_2D, m_texColor);
+    shader->uniform1i("u_texColor", pos);
+}
+
+void GBuffer::BindPosition(Shader* shader, int pos) {
+    glActiveTexture(GL_TEXTURE0 + pos);
+    glBindTexture(GL_TEXTURE_2D, m_texPosition);
+    shader->uniform1i("u_texPosition", pos);
+}
+void GBuffer::BindNormal(Shader* shader, int pos) {
+    glActiveTexture(GL_TEXTURE0 + pos);
+    glBindTexture(GL_TEXTURE_2D, m_texNormal);
+    shader->uniform1i("u_texNormal", pos);
+}
+
+
+void GBuffer::Create(std::uint32_t width, std::uint32_t height) {
     glGenFramebuffers(1, &m_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
 
@@ -47,38 +89,59 @@ GBuffer::GBuffer(std::uint32_t width, std::uint32_t height) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-GBuffer::~GBuffer() {
-}
-
-void GBuffer::BindWrite() {
-    glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-}
-
-void GBuffer::BindRead() {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-}
-
-void GBuffer::BindColor(Shader* shader, int pos) {
-    glActiveTexture(GL_TEXTURE0 + pos);
-    glBindTexture(GL_TEXTURE_2D, m_texColor);
-    shader->uniform1i("u_texColor", pos);
-}
-
-void GBuffer::BindPosition(Shader* shader, int pos) {
-    glActiveTexture(GL_TEXTURE0 + pos);
-    glBindTexture(GL_TEXTURE_2D, m_texPosition);
-    shader->uniform1i("u_texPosition", pos);
-}
-
-void GBuffer::BindNormal(Shader* shader, int pos) {
-    glActiveTexture(GL_TEXTURE0 + pos);
-    glBindTexture(GL_TEXTURE_2D, m_texNormal);
-    shader->uniform1i("u_texNormal", pos);
+void GBuffer::Delete() {
+    glDeleteFramebuffers(1, &m_fbo);
+    glDeleteTextures(1, &m_texColor);
+    glDeleteTextures(1, &m_texPosition);
+    glDeleteTextures(1, &m_texNormal);
+    glDeleteRenderbuffers(1, &m_depth);
+    m_fbo = 0;
+    m_depth = 0;
+    m_texColor = 0;
+    m_texPosition = 0;
+    m_texNormal = 0;
 }
 
 SSAOBuffer::SSAOBuffer(std::uint32_t width, std::uint32_t height) {
+    Create(width, height);
+}
+
+SSAOBuffer::~SSAOBuffer() {
+    Delete();
+}
+
+void SSAOBuffer::ResizeCallback(std::uint32_t width, std::uint32_t height) {
+    Delete();
+    Create(width, height);
+    std::cout << "heelo from SSAOBuffer\n";
+}
+
+void SSAOBuffer::BindWrite() {
+    glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+    glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void SSAOBuffer::BindRead() {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void SSAOBuffer::BindNoise(Shader* shader, int pos) {
+    glActiveTexture(GL_TEXTURE0 + pos);
+    glBindTexture(GL_TEXTURE_2D, m_texNoise);
+    shader->uniform1i("u_texNormal", pos);
+}
+
+void SSAOBuffer::BindSSAO(Shader* shader, int pos) {
+    glActiveTexture(GL_TEXTURE0 + pos);
+    glBindTexture(GL_TEXTURE_2D, m_ssao);
+    shader->uniform1i("u_texSSAO", pos);
+}
+
+void SSAOBuffer::BindKernel(Shader* shader) {
+    shader->uniformArr3f("u_samples", m_kernels.size(), glm::value_ptr(m_kernels[0]));
+}
+
+void SSAOBuffer::Create(std::uint32_t width, std::uint32_t height) {
     glGenFramebuffers(1, &m_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
 
@@ -130,30 +193,13 @@ SSAOBuffer::SSAOBuffer(std::uint32_t width, std::uint32_t height) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-SSAOBuffer::~SSAOBuffer() {
-}
-
-void SSAOBuffer::BindWrite() {
-    glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
-    glClear(GL_COLOR_BUFFER_BIT);
-}
-
-void SSAOBuffer::BindRead() {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-void SSAOBuffer::BindNoise(Shader* shader, int pos) {
-    glActiveTexture(GL_TEXTURE0 + pos);
-    glBindTexture(GL_TEXTURE_2D, m_texNoise);
-    shader->uniform1i("u_texNormal", pos);
-}
-
-void SSAOBuffer::BindSSAO(Shader* shader, int pos) {
-    glActiveTexture(GL_TEXTURE0 + pos);
-    glBindTexture(GL_TEXTURE_2D, m_ssao);
-    shader->uniform1i("u_texSSAO", pos);
-}
-
-void SSAOBuffer::BindKernel(Shader* shader) {
-    shader->uniformArr3f("u_samples", m_kernels.size(), glm::value_ptr(m_kernels[0]));
+void SSAOBuffer::Delete() {
+    glDeleteFramebuffers(1, &m_fbo);
+    glDeleteTextures(1, &m_ssao);
+    glDeleteTextures(1, &m_texNoise);
+    m_fbo = 0;
+    m_ssao = 0;
+    m_texNoise = 0;
+    m_kernels.clear();
+    m_noise.clear();
 }

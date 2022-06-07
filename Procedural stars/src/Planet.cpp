@@ -619,7 +619,7 @@ void Planet::Render(glm::vec3 cameraPos, Shader* shader) {
 		auto branch = m_tree->GetBranch(i);
 		GetLod(branch, queue, cameraPos);
 	}
-	std::cout << timer.Elapsed() << '\n';
+	//std::cout << timer.Elapsed() << '\n';
 	// render queued nodes
 	int limitCounter = 0;
 	for (int i = 0; i < queue.size(); i++) {
