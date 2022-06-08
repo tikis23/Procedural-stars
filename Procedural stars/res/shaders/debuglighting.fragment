@@ -16,7 +16,7 @@ void ShowDebugFrag(int index) {
     //extract fragment data from fbo
     vec4 color = texture(u_texColor, texCoord);
     vec3 position = texture(u_texPosition, texCoord).rgb;
-    vec3 normal = texture(u_texNormal, texCoord).rgb;
+    vec3 normal = (texture(u_texNormal, texCoord).rgb + vec3(1, 1, 1)) * 0.5;
     float ssao = texture(u_texSSAO, texCoord).r;
 
     // variables

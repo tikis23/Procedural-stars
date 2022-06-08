@@ -4,6 +4,7 @@
 #include "Shader.h"
 #include "QuadTree.h"
 #include "glm/glm.hpp"
+#include "ThreadPool.h"
 
 enum PLANET_FACE {
 	TOP,
@@ -32,9 +33,10 @@ private:
 	void GenerateMesh(QUADTREE_NODE* node);
 	void GetLod(QUADTREE_NODE* node, std::vector<QUADTREE_NODE*>& queue, glm::vec3 cameraPos);
 	void MeshCreateData(QUADTREE_NODE* node,void* ptr);
-	void CreateFace(std::vector<Vertex>* data, int face);
 	bool Cleanup(QUADTREE_NODE* node, double currentTime, int& meshCount);
 	QUADTREE_NODE* GetNeighbor(QUADTREE_NODE* node, int dir);
+
+	static ThreadPool m_threadPool;
 
 	float m_radius;
 	float m_maxHeight;

@@ -69,8 +69,19 @@ bool Application::Init()
     ImGui_ImplGlfw_InitForOpenGL(m_window->Handle(), true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
-    // create renderer
-    m_renderer.reset(new Renderer);
+    // create renderer (Setting callback doesn't work without ImGui frame IDK)
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    m_renderer.reset(new Renderer(m_window.get()));
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+        GLFWwindow* backup_current_context = glfwGetCurrentContext();
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+        glfwMakeContextCurrent(backup_current_context);
+    }
 
 	return true;
 }
@@ -83,15 +94,16 @@ bool Application::Start()
     int frames = 0;
     float frametime = 0;
     int FPS = 0;
+
     while (m_running) {
         if (glfwWindowShouldClose(m_window->Handle()))
             m_running = false;
+
         // Start ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         ImGuiIO& io = ImGui::GetIO();
-
         ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_NoDockingInCentralNode | ImGuiDockNodeFlags_PassthruCentralNode);
         if (ImGui::Begin("Settings", 0)) {
             if (ImGui::BeginTabBar("")) {
@@ -106,10 +118,8 @@ bool Application::Start()
         }
         ImGui::End();
         if (!m_window->IsIconified()) {
-
             cam.UpdateInput(m_window.get());
             cam.Update(m_window->GetAspectRatio());
-
             m_renderer->Draw(&cam, m_window.get());
         }
         if (ImGui::Begin("Settings", 0)) {

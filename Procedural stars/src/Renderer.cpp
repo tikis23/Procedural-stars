@@ -4,16 +4,24 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "imgui/imgui.h"
 #include "Planet.h"
-#include "Buffer.h"
 #include "Timer.h"
 #include "Debug.h"
+#include "NoiseMap.h"
 
-Renderer::Renderer() {
+Renderer::Renderer(Window* window) :
+    m_gbuffer(window->GetWidth(), window->GetHeight()),
+    m_ssaobuffer(window->GetWidth(), window->GetHeight()) {
+    // set patch vertices
     GLint MaxPatchVertices = 0;
     glGetIntegerv(GL_MAX_PATCH_VERTICES, &MaxPatchVertices);
     printf("Max supported patch vertices %d\n", MaxPatchVertices);
     glPatchParameteri(GL_PATCH_VERTICES, 3);
     LoadShaders();
+
+    // attach buffers to window resize callback
+    window->AddResizeCallback(std::bind(&GBuffer::ResizeCallback, m_gbuffer, std::placeholders::_1, std::placeholders::_2));
+    window->AddResizeCallback(std::bind(&SSAOBuffer::ResizeCallback, m_ssaobuffer, std::placeholders::_1, std::placeholders::_2));
+
     Debug::Init();
 }
 
@@ -46,21 +54,11 @@ void Renderer::LoadShaders() {
 
 void Renderer::Draw(Camera* cam, Window* window) {
     ///////////////// TEMP SOLUTION
-    static GBuffer gbuffer(window->GetWidth(), window->GetHeight());
-    static SSAOBuffer ssaobuffer(window->GetWidth(), window->GetHeight());
-    // create planets (temporary solution)
     static std::vector<Planet> planets;
     static bool once = true;
-    if (once) {
-        window->AddResizeCallback(std::bind(&GBuffer::ResizeCallback, gbuffer, std::placeholders::_1, std::placeholders::_2));
-        window->AddResizeCallback(std::bind(&SSAOBuffer::ResizeCallback, ssaobuffer, std::placeholders::_1, std::placeholders::_2));
-        planets.push_back({});
-        once = false;
-    }
-    // temp solution
     static Mesh screenQuad;
-    static bool initQuad = true;
-    if (initQuad) {
+    if (once) {
+        planets.push_back({});
         auto quad = screenQuad.GetVertexData();
         quad->push_back({ {-1, -1, 0} });
         quad->push_back({ {-1, 1, 0} });
@@ -69,7 +67,9 @@ void Renderer::Draw(Camera* cam, Window* window) {
         quad->push_back({ {1, 1, 0} });
         quad->push_back({ {1, -1, 0} });
         screenQuad.Buffer();
-        initQuad = false;
+        once = false;
+        m_gbuffer.ResizeCallback(window->GetWidth(), window->GetHeight());
+        m_ssaobuffer.ResizeCallback(window->GetWidth(), window->GetHeight());
     }
 
     // imgui settings
@@ -133,15 +133,18 @@ void Renderer::Draw(Camera* cam, Window* window) {
 
 
     // render each planet
-    gbuffer.BindWrite();
+    m_gbuffer.BindWrite();
     m_terrainShader->Use();
     m_terrainShader->uniformMatrix4("projection", glm::value_ptr(cam->GetProjection()));
     m_terrainShader->uniformMatrix4("view", glm::value_ptr(cam->GetView()));
     m_terrainShader->uniform3f("u_cameraPos", cam->GetPosition());
     m_terrainShader->uniform1i("u_showLod", m_showLod);
+    static NoiseMap noise(20, 20);
+
     for (int i = 0; i < planets.size(); i++) {
         planets[i].Update();
         m_terrainShader->uniformMatrix4("model", glm::value_ptr(planets[i].GetPositionModelMatrix()));
+        noise.BindNoise(m_terrainShader.get(), "u_noise", 0);
         planets[i].Render(cam->GetPosition(), m_terrainShader.get());
     }
 
@@ -154,11 +157,11 @@ void Renderer::Draw(Camera* cam, Window* window) {
 
     // SSAO pass
     m_SSAOShader->Use();
-    ssaobuffer.BindWrite();
-    gbuffer.BindPosition(m_SSAOShader.get(), 0);
-    gbuffer.BindNormal(m_SSAOShader.get(), 1);
-    ssaobuffer.BindNoise(m_SSAOShader.get(), 2);
-    ssaobuffer.BindKernel(m_SSAOShader.get());
+    m_ssaobuffer.BindWrite();
+    m_gbuffer.BindPosition(m_SSAOShader.get(), 0);
+    m_gbuffer.BindNormal(m_SSAOShader.get(), 1);
+    m_ssaobuffer.BindNoise(m_SSAOShader.get(), 2);
+    m_ssaobuffer.BindKernel(m_SSAOShader.get());
     m_SSAOShader->uniformMatrix4("u_projection", glm::value_ptr(cam->GetProjection()));
     m_SSAOShader->uniform2f("u_screen", window->GetWidth(), window->GetHeight());
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -169,11 +172,11 @@ void Renderer::Draw(Camera* cam, Window* window) {
     if (Debug::LightingEnabled())
         defferedShader = Debug::GetLightingShader();
     defferedShader->Use();
-    gbuffer.BindRead();
-    gbuffer.BindColor(defferedShader, 0);
-    gbuffer.BindPosition(defferedShader, 1);
-    gbuffer.BindNormal(defferedShader, 2);
-    ssaobuffer.BindSSAO(defferedShader, 3);
+    m_gbuffer.BindRead();
+    m_gbuffer.BindColor(defferedShader, 0);
+    m_gbuffer.BindPosition(defferedShader, 1);
+    m_gbuffer.BindNormal(defferedShader, 2);
+    m_ssaobuffer.BindSSAO(defferedShader, 3);
     defferedShader->uniform3f("u_cameraPos", cam->GetPosition());
     defferedShader->uniform1i("u_ssao", m_ssao);
 

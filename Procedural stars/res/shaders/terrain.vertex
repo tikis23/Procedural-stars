@@ -2,7 +2,8 @@
 
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in vec3 in_color;
-layout(location = 2) in int in_edge;
+layout(location = 2) in vec3 in_normal;
+layout(location = 3) in int in_edge;
 
 out VertexOut {
     vec3 position;
@@ -17,6 +18,6 @@ void main()
 {
     vertex.edge = in_edge;
     vertex.color = in_color * u_showLod + vec3(1, 1, 0) * (1 - u_showLod);
-    vertex.normal = normalize(in_position);//in_normal;
+    vertex.normal = in_normal;
     vertex.position = in_position;
 }

@@ -6,13 +6,14 @@
 #include <GLFW/glfw3.h>
 #include <thread>
 #include <limits>
-#include <iostream>
+#include <FastNoise/FastNoise.h>
 #include "Timer.h"
 #include "Debug.h"
 
 #define MAX_MESHES_GENERATED_PER_FRAME 10
 #define NODE_CLEANUP_INTERVAL 20
 #define NODE_LIFETIME 10
+#define NUM_THREADS 10
 
 glm::vec3 MapToSphere(glm::vec3 pos) {
 	double sqrx = pos.x * pos.x;
@@ -75,9 +76,9 @@ glm::vec3 GetMaxPoint(const glm::vec3& p1, const glm::vec3& p2) {
 
 Planet::Planet() {
 	m_radius = 10000;
-	m_maxHeight = 200;
+	m_maxHeight = 400;
 	m_lodAmount = 10;
-	m_nodeVertexAmount = 5;
+	m_nodeVertexAmount = 20;
 
 	m_tree = new QuadTree(6);
 	m_position = { 0, 0, 0 };
@@ -164,7 +165,7 @@ void Planet::GetLod(QUADTREE_NODE* node, std::vector<QUADTREE_NODE*>& queue, glm
 		double dist = std::max(0.0, GetAABBDistance(cameraPos, node->minPoint, node->maxPoint) - m_maxHeight);
 		double chunkSize = glm::length(node->minPoint - node->maxPoint);
 		double error = chunkSize / dist;
-		double maxError = 2;
+		double maxError = 1;
 		if (dist == 0) {
 			error = maxError + 1;
 		}
@@ -685,34 +686,17 @@ void Planet::Render(glm::vec3 cameraPos, Shader* shader) {
 	}
 }
 
-void Planet::CreateFace(std::vector<Vertex>* data, int face) {
-
-}
-
 void Planet::MeshCreateData(QUADTREE_NODE* node,void* ptr) {
 	ScopedTimer timer("MESH GEN");
 	auto data = node->mesh->GetVertexData();
 	data->clear();
-	
+
 	{
 		glm::vec3 color = { 
 			floor((node->level % 3) * 0.55),
 			floor(((node->level + 1) % 3) * 0.55),
 			floor(((node->level + 2) % 3) * 0.55)
 		};
-
-		//color = { 1, 1, 1 };
-		//if (node->parent != nullptr) {
-		//	if (node->index == 0)
-		//		color = { 1, 0, 0 };
-		//	if (node->index == 1)
-		//		color = { 0, 1, 0 };
-		//	if (node->index == 2)
-		//		color = { 0, 0, 1 };
-		//	if (node->index == 3)
-		//		color = { 1, 1, 0 };
-		//}
-
 
 		glm::vec3 rotation(0);
 		float angle = 0;
@@ -746,54 +730,205 @@ void Planet::MeshCreateData(QUADTREE_NODE* node,void* ptr) {
 			break;
 		}
 
+		int dataSize = (2 * m_nodeVertexAmount + 3) * (2 * m_nodeVertexAmount + 3);
+		std::vector<float> xData;
+		std::vector<float> yData;
+		std::vector<float> zData;
+		std::vector<glm::vec3> nData;
+		xData.reserve(dataSize);
+		yData.reserve(dataSize);
+		zData.reserve(dataSize);
+		nData.reserve(dataSize);
+
+		// generate sphere vertices
 		glm::vec3 offset = glm::vec3(node->localPosition.x, 0, node->localPosition.y) / powf(2, m_lodAmount);
 		float scalar = pow(2, node->level);
-		node->minPoint = glm::rotate(m_radius * MapToSphere(offset + glm::vec3{ -1.f / scalar, 1, -1.f / scalar }), angle, rotation);
-		node->maxPoint = glm::rotate(m_radius * MapToSphere(offset + glm::vec3{  1.f / scalar, 1,  1.f / scalar }), angle, rotation);
-		for (int i = -m_nodeVertexAmount; i < m_nodeVertexAmount; i++) {
-			for (int j = -m_nodeVertexAmount; j < m_nodeVertexAmount; j++) {
-				// get (-1; 1) coordinate
-				glm::vec3 point0 = offset + glm::vec3{float(i + 1) / m_nodeVertexAmount / scalar, 1, float(j + 1) / m_nodeVertexAmount / scalar };
-				glm::vec3 point1 = offset + glm::vec3{float(i + 1) / m_nodeVertexAmount / scalar, 1, float(j) / m_nodeVertexAmount     / scalar };
-				glm::vec3 point2 = offset + glm::vec3{float(i) / m_nodeVertexAmount     / scalar, 1, float(j + 1) / m_nodeVertexAmount / scalar };
-				glm::vec3 point3 = offset + glm::vec3{float(i) / m_nodeVertexAmount     / scalar, 1, float(j) / m_nodeVertexAmount     / scalar };
+		{
+			// unit sphere
+			for (int i = -m_nodeVertexAmount - 1; i <= m_nodeVertexAmount + 1; i++) {
+				for (int j = -m_nodeVertexAmount - 1; j <= m_nodeVertexAmount + 1; j++) {
+					glm::vec3 point = offset + glm::vec3{ float(i) / m_nodeVertexAmount / scalar, 1, float(j) / m_nodeVertexAmount / scalar };
+					point = MapToSphere(glm::rotate(point, angle, rotation));
+					xData.push_back(point.x);
+					yData.push_back(point.y);
+					zData.push_back(point.z);
+					nData.push_back({ 0, 0, 0 });
+					//// get edge for crack filling
+					//int edgeBottom = 0;
+					//int edgeTop = 0;
+					//int edgeLeft = 0;
+					//int edgeRight = 0;
+					//if (i == -m_nodeVertexAmount)
+					//	edgeBottom = 1;
+					//else if (i == m_nodeVertexAmount - 1)
+					//	edgeTop = 2;
+					//if (j == -m_nodeVertexAmount)
+					//	edgeLeft = 1;
+					//else if (j == m_nodeVertexAmount - 1)
+					//	edgeRight = 2;
+					//data->push_back({ point0, color, edgeLeft });
+					//data->push_back({ point1, color, 0 });
+					//data->push_back({ point3, color, edgeTop });
+					//data->push_back({ point3, color, edgeRight });
+					//data->push_back({ point2, color, 0 });
+					//data->push_back({ point0, color, edgeBottom });
+				}
+			}
+			// noise
+			m_maxHeight = 500;
+			int seed = 1337;
+			float scale = 10.0f;
+			float gain = 0.5;
+			float weight = 0.5;
+			int octaves = 6;
+			float lacunarity = 2.0;
 
-				// rotate to correct face
-				point0 = glm::rotate(point0, angle, rotation);
-				point1 = glm::rotate(point1, angle, rotation);
-				point2 = glm::rotate(point2, angle, rotation);
-				point3 = glm::rotate(point3, angle, rotation);
+			auto fPerlin = FastNoise::New<FastNoise::Perlin>();
+			auto fScale = FastNoise::New<FastNoise::DomainScale>();
+			auto fNoise = FastNoise::New<FastNoise::FractalFBm>();
+			fScale->SetSource(fPerlin);
+			fScale->SetScale(scale);
+			fNoise->SetSource(fScale);
+			fNoise->SetGain(gain);
+			fNoise->SetWeightedStrength(weight);
+			fNoise->SetOctaveCount(octaves);
+			fNoise->SetLacunarity(lacunarity);
+			std::vector<float> noiseData(dataSize);
+			fNoise->GenPositionArray3D(noiseData.data(), dataSize,
+				xData.data(), yData.data(), zData.data(), 0, 0, 0, seed);
+			for (int i = 0; i < noiseData.size(); i++) {
+				glm::vec3 point = glm::vec3{ xData[i], yData[i], zData[i] };
+				point = point * m_radius + point * noiseData[i] * m_maxHeight;
+				xData[i] = point.x;
+				yData[i] = point.y;
+				zData[i] = point.z;
+			}
+		}
+		// get triangle indices and normals
+		std::vector<glm::ivec3> triangles(m_nodeVertexAmount * m_nodeVertexAmount * 4);
+		int dataOffset = (2 * m_nodeVertexAmount + 3);
+		{
+			for (int i = 0; i < m_nodeVertexAmount * 2; i++) {
+				for (int j = 0; j < m_nodeVertexAmount * 2; j++) {
+					// get indexes
+					int inx0 = i + 2;
+					int iny0 = j + 1;
+					int inx1 = i + 2;
+					int iny1 = j + 2;
+					int inx2 = i + 1;
+					int iny2 = j + 1;
+					int inx3 = i + 1;
+					int iny3 = j + 2;
+					int index0 = inx0 * dataOffset + iny0;
+					int index1 = inx1 * dataOffset + iny1;
+					int index2 = inx2 * dataOffset + iny2;
+					int index3 = inx3 * dataOffset + iny3;
+					triangles.push_back({ index3, index1, index0 });
+					triangles.push_back({ index0, index2, index3 });
 
-				// map to sphere and apply radius
-				point0 = m_radius * MapToSphere(point0);
-				point1 = m_radius * MapToSphere(point1);
-				point2 = m_radius * MapToSphere(point2);
-				point3 = m_radius * MapToSphere(point3);
+					// get normals
+					glm::vec3 point0 = glm::vec3{ xData[index3], yData[index3], zData[index3] };
+					glm::vec3 point1 = glm::vec3{ xData[index1], yData[index1], zData[index1] };
+					glm::vec3 point2 = glm::vec3{ xData[index0], yData[index0], zData[index0] };
+					glm::vec3 normal = glm::normalize(glm::cross(point2 - point0, point1 - point0));
+					nData[index3] += normal;
+					nData[index1] += normal;
+					nData[index0] += normal;
 
-				// get min/max points for AABB
-				node->minPoint = GetMinPoint(node->minPoint, GetMinPoint(point0, GetMinPoint(point1, GetMinPoint(point2, point3))));
-				node->maxPoint = GetMaxPoint(node->maxPoint, GetMaxPoint(point0, GetMaxPoint(point1, GetMaxPoint(point2, point3))));
+					point0 = glm::vec3{ xData[index0], yData[index0], zData[index0] };
+					point1 = glm::vec3{ xData[index2], yData[index2], zData[index2] };
+					point2 = glm::vec3{ xData[index3], yData[index3], zData[index3] };
+					normal = glm::normalize(glm::cross(point2 - point0, point1 - point0));
+					nData[index0] += normal;
+					nData[index2] += normal;
+					nData[index3] += normal;
+				}
+			}
+			// get normals on edges
+			for (int i = 0; i < 2 * m_nodeVertexAmount + 2; i++) {
+				for (int j = 0; j < 2 * m_nodeVertexAmount + 2; j += 2 * m_nodeVertexAmount + 1) {
+					// get indexes
+					int inx0 = i + 1;
+					int iny0 = j + 0;
+					int inx1 = i + 1;
+					int iny1 = j + 1;
+					int inx2 = i + 0;
+					int iny2 = j + 0;
+					int inx3 = i + 0;
+					int iny3 = j + 1;
+					int index0 = inx0 * dataOffset + iny0;
+					int index1 = inx1 * dataOffset + iny1;
+					int index2 = inx2 * dataOffset + iny2;
+					int index3 = inx3 * dataOffset + iny3;
 
-				// get edge for crack filling
-				int edgeBottom = 0;
-				int edgeTop = 0;
-				int edgeLeft = 0;
-				int edgeRight = 0;
-				if (i == -m_nodeVertexAmount)
-					edgeBottom = 1;
-				else if (i == m_nodeVertexAmount - 1)
-					edgeTop = 2;
-				if (j == -m_nodeVertexAmount)
-					edgeLeft = 1;
-				else if (j == m_nodeVertexAmount - 1)
-					edgeRight = 2;
+					// get normals
+					glm::vec3 point0 = glm::vec3{ xData[index3], yData[index3], zData[index3] };
+					glm::vec3 point1 = glm::vec3{ xData[index1], yData[index1], zData[index1] };
+					glm::vec3 point2 = glm::vec3{ xData[index0], yData[index0], zData[index0] };
+					glm::vec3 normal = glm::normalize(glm::cross(point2 - point0, point1 - point0));
+					nData[index3] += normal;
+					nData[index1] += normal;
+					nData[index0] += normal;
 
-				data->push_back({ point0, color, edgeLeft });
-				data->push_back({ point1, color, 0 });
-				data->push_back({ point3, color, edgeTop });
-				data->push_back({ point3, color, edgeRight });
-				data->push_back({ point2, color, 0 });
-				data->push_back({ point0, color, edgeBottom });
+					point0 = glm::vec3{ xData[index0], yData[index0], zData[index0] };
+					point1 = glm::vec3{ xData[index2], yData[index2], zData[index2] };
+					point2 = glm::vec3{ xData[index3], yData[index3], zData[index3] };
+					normal = glm::normalize(glm::cross(point2 - point0, point1 - point0));
+					nData[index0] += normal;
+					nData[index2] += normal;
+					nData[index3] += normal;
+				}
+			}
+			for (int j = 1; j < 2 * m_nodeVertexAmount + 1; j++) {
+				for (int i = 0; i < 2 * m_nodeVertexAmount + 2; i += 2 * m_nodeVertexAmount + 1) {
+					// get indexes
+					int inx0 = i + 1;
+					int iny0 = j + 0;
+					int inx1 = i + 1;
+					int iny1 = j + 1;
+					int inx2 = i + 0;
+					int iny2 = j + 0;
+					int inx3 = i + 0;
+					int iny3 = j + 1;
+					int index0 = inx0 * dataOffset + iny0;
+					int index1 = inx1 * dataOffset + iny1;
+					int index2 = inx2 * dataOffset + iny2;
+					int index3 = inx3 * dataOffset + iny3;
+
+					// get normals
+					glm::vec3 point0 = glm::vec3{ xData[index3], yData[index3], zData[index3] };
+					glm::vec3 point1 = glm::vec3{ xData[index1], yData[index1], zData[index1] };
+					glm::vec3 point2 = glm::vec3{ xData[index0], yData[index0], zData[index0] };
+					glm::vec3 normal = glm::normalize(glm::cross(point2 - point0, point1 - point0));
+					nData[index3] += normal;
+					nData[index1] += normal;
+					nData[index0] += normal;
+
+					point0 = glm::vec3{ xData[index0], yData[index0], zData[index0] };
+					point1 = glm::vec3{ xData[index2], yData[index2], zData[index2] };
+					point2 = glm::vec3{ xData[index3], yData[index3], zData[index3] };
+					normal = glm::normalize(glm::cross(point2 - point0, point1 - point0));
+					nData[index0] += normal;
+					nData[index2] += normal;
+					nData[index3] += normal;
+				}
+			}
+		}
+
+		// combine position and normal data
+		{
+			node->minPoint = glm::rotate(m_radius * MapToSphere(offset + glm::vec3{ -1.f / scalar, 1, -1.f / scalar }), angle, rotation);
+			node->maxPoint = glm::rotate(m_radius * MapToSphere(offset + glm::vec3{ 1.f / scalar, 1,  1.f / scalar }), angle, rotation);
+			for (int i = 0; i < triangles.size(); i++) {
+				glm::vec3 point0 = glm::vec3{ xData[triangles[i].x], yData[triangles[i].x], zData[triangles[i].x] };
+				glm::vec3 point1 = glm::vec3{ xData[triangles[i].y], yData[triangles[i].y], zData[triangles[i].y] };
+				glm::vec3 point2 = glm::vec3{ xData[triangles[i].z], yData[triangles[i].z], zData[triangles[i].z] };
+
+				data->push_back({ point0, color, glm::normalize(nData[triangles[i].x]), 0 });
+				data->push_back({ point1, color, glm::normalize(nData[triangles[i].y]), 0 });
+				data->push_back({ point2, color, glm::normalize(nData[triangles[i].z]), 0 });
+				node->minPoint = GetMinPoint(node->minPoint, GetMinPoint(point0, GetMinPoint(point1, point2)));
+				node->maxPoint = GetMaxPoint(node->maxPoint, GetMaxPoint(point0, GetMaxPoint(point1, point2)));
 			}
 		}
 	}
@@ -807,9 +942,9 @@ void Planet::GenerateMesh(QUADTREE_NODE* node) {
 	if (node->mesh != nullptr)
 		delete node->mesh;
 	node->mesh = new Mesh;
-	node->mesh->Allocate(m_nodeVertexAmount * m_nodeVertexAmount * 4 * 6);
+	node->mesh->Allocate(14440);
 	void* ptr = node->mesh->MapBuffer();
-	auto thread = std::thread(&Planet::MeshCreateData, this, node, ptr);
-	thread.detach();
-	//MeshCreateData( node, ptr);
+	m_threadPool.AddJob(std::bind(&Planet::MeshCreateData, this, node, ptr));
 }
+
+ThreadPool Planet::m_threadPool(NUM_THREADS);

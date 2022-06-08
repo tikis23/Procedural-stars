@@ -19,7 +19,6 @@ GBuffer::~GBuffer() {
 void GBuffer::ResizeCallback(std::uint32_t width, std::uint32_t height) {
     Delete();
     Create(width, height);
-    std::cout << "heelo from GBuffer\n";
 }
 
 void GBuffer::BindWrite() {
@@ -113,7 +112,6 @@ SSAOBuffer::~SSAOBuffer() {
 void SSAOBuffer::ResizeCallback(std::uint32_t width, std::uint32_t height) {
     Delete();
     Create(width, height);
-    std::cout << "heelo from SSAOBuffer\n";
 }
 
 void SSAOBuffer::BindWrite() {

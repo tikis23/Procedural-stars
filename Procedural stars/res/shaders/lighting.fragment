@@ -23,8 +23,8 @@ void main()
     vec3 lightPos = vec3(500, 500, 500);
     float ambientStrength = 0.3 * ssao;
     float diffuseStrength = 0.8;
-    float specularStrength = 0.2;
-    int shininessStrength = 2;
+    float specularStrength = 0.4;
+    int shininessStrength = 16;
 
     // precomputed variables
     vec3 lightDir = normalize(lightPos - position);

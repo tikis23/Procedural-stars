@@ -32,8 +32,10 @@ void main()
         // u_edges[2] = left
         // u_edges[3] = right
 
-        // top bottom
+        gl_TessLevelOuter[0] = 1;
+        gl_TessLevelOuter[1] = 1;
         gl_TessLevelOuter[2] = 1;
+        // top bottom
         if (vertex_in[2].edge == 1 && u_edges[1] > 0) {
             gl_TessLevelOuter[2] = 2;
         } 
@@ -42,7 +44,6 @@ void main()
         }
 
         // left right
-        gl_TessLevelOuter[0] = 1;
         if (vertex_in[0].edge == 1 && u_edges[2] > 0) {
             gl_TessLevelOuter[0] = 2;
         }
@@ -51,7 +52,6 @@ void main()
         }
 
         // constant
-        gl_TessLevelOuter[1] = 1;
         gl_TessLevelInner[0] = 1;
     }
 } 

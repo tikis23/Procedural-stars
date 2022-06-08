@@ -75,6 +75,12 @@
     <ClCompile Include="src\Timer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\NoiseMap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ThreadPool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Application.h">
@@ -146,6 +152,12 @@
     <ClInclude Include="src\Debug.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\NoiseMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ThreadPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\terrain.vertex" />
@@ -160,5 +172,9 @@
     <None Include="res\shaders\terrain.tesscontrol" />
     <None Include="res\shaders\debuggeometry.vertex" />
     <None Include="res\shaders\debuggeometry.fragment" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="..\Dependencies\FastNoise2\bin\FastNoise.dll" />
+    <CopyFileToFolders Include="..\Dependencies\FastNoise2\bin\FastNoiseD.dll" />
   </ItemGroup>
 </Project>

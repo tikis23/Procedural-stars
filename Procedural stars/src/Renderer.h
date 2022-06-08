@@ -1,15 +1,19 @@
 #pragma once
-
 #include "Shader.h"
 #include "Camera.h"
 #include "Window.h"
+#include "Buffer.h"
+
 class Renderer {
 public:
-	Renderer();
+	Renderer(Window* window);
 	~Renderer();
 	void Draw(Camera* cam, Window* window);
 private:
 	void LoadShaders();
+
+	GBuffer m_gbuffer;
+	SSAOBuffer m_ssaobuffer;
 
 	std::shared_ptr<Shader> m_terrainShader;
 	std::shared_ptr<Shader> m_lightingShader;
