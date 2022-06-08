@@ -10,9 +10,9 @@
 #include "Timer.h"
 #include "Debug.h"
 
-#define MAX_MESHES_GENERATED_PER_FRAME 10
-#define NODE_CLEANUP_INTERVAL 20
-#define NODE_LIFETIME 10
+#define MAX_MESHES_GENERATED_PER_FRAME 20
+#define NODE_CLEANUP_INTERVAL 10
+#define NODE_LIFETIME 20
 #define NUM_THREADS 10
 
 glm::vec3 MapToSphere(glm::vec3 pos) {
@@ -77,7 +77,7 @@ glm::vec3 GetMaxPoint(const glm::vec3& p1, const glm::vec3& p2) {
 Planet::Planet() {
 	m_radius = 10000;
 	m_maxHeight = 400;
-	m_lodAmount = 10;
+	m_lodAmount = 12;
 	m_nodeVertexAmount = 20;
 
 	m_tree = new QuadTree(6);
@@ -162,16 +162,10 @@ QUADTREE_NODE* Planet::GetNeighbor(QUADTREE_NODE * node, int dir) {
 void Planet::GetLod(QUADTREE_NODE* node, std::vector<QUADTREE_NODE*>& queue, glm::vec3 cameraPos) {
 	node->ignoreRender = false;
 	if (node->mesh != nullptr && node->mesh->IsBuffered()) {
-		double dist = std::max(0.0, GetAABBDistance(cameraPos, node->minPoint, node->maxPoint) - m_maxHeight);
+		double dist = GetAABBDistance(cameraPos, node->minPoint, node->maxPoint);
 		double chunkSize = glm::length(node->minPoint - node->maxPoint);
 		double error = chunkSize / dist;
 		double maxError = 1;
-		if (dist == 0) {
-			error = maxError + 1;
-		}
-		else {
-			maxError = maxError * pow(1.2, node->level);
-		}
 		if (error > maxError && node->level + 1 < m_lodAmount) {
 			node->Split();
 			GetLod(node->child[0], queue, cameraPos);
@@ -620,7 +614,8 @@ void Planet::Render(glm::vec3 cameraPos, Shader* shader) {
 		auto branch = m_tree->GetBranch(i);
 		GetLod(branch, queue, cameraPos);
 	}
-	//std::cout << timer.Elapsed() << '\n';
+	timer.PrintElapsed("Node selection");
+	timer.Reset();
 	// render queued nodes
 	int limitCounter = 0;
 	for (int i = 0; i < queue.size(); i++) {
@@ -671,6 +666,8 @@ void Planet::Render(glm::vec3 cameraPos, Shader* shader) {
 			}
 		}
 	}
+	timer.PrintElapsed("Node render");
+
 
 	// node cleanup
 	if (currentTime > m_nodeCleanupTimer) {
@@ -776,33 +773,173 @@ void Planet::MeshCreateData(QUADTREE_NODE* node,void* ptr) {
 			}
 			// noise
 			m_maxHeight = 500;
-			int seed = 1337;
-			float scale = 10.0f;
-			float gain = 0.5;
-			float weight = 0.5;
-			int octaves = 6;
-			float lacunarity = 2.0;
+			float power_bigHills = 1.0;
+			float power_medHills = 0.0;
+			float power_lowHills = 0.0;
 
-			auto fPerlin = FastNoise::New<FastNoise::Perlin>();
-			auto fScale = FastNoise::New<FastNoise::DomainScale>();
-			auto fNoise = FastNoise::New<FastNoise::FractalFBm>();
-			fScale->SetSource(fPerlin);
-			fScale->SetScale(scale);
-			fNoise->SetSource(fScale);
-			fNoise->SetGain(gain);
-			fNoise->SetWeightedStrength(weight);
-			fNoise->SetOctaveCount(octaves);
-			fNoise->SetLacunarity(lacunarity);
+			std::vector<float> bigHillData(dataSize);
+			std::vector<float> medHillData(dataSize);
+			std::vector<float> lowHillData(dataSize);
+
+			//// big hills
+			//{
+			//	int seed = 1337;
+			//	float scale = 2.0f;
+			//	float gain = 1.0;
+			//	float weight = 0.5;
+			//	int octaves = 4;
+			//	float lacunarity = 1.0;
+			//	FastNoise::New<FastNoise::
+			//	auto fPerlin = FastNoise::New<FastNoise::Perlin>();
+			//	auto fScale = FastNoise::New<FastNoise::DomainScale>();
+			//	auto fNoise = FastNoise::New<FastNoise::FractalFBm>();
+			//	fScale->SetSource(fPerlin);
+			//	fScale->SetScale(scale);
+			//	fNoise->SetSource(fScale);
+			//	fNoise->SetGain(gain);
+			//	fNoise->SetWeightedStrength(weight);
+			//	fNoise->SetOctaveCount(octaves);
+			//	fNoise->SetLacunarity(lacunarity);
+			//	fNoise->GenPositionArray3D(bigHillData.data(), dataSize,
+			//	xData.data(), yData.data(), zData.data(), 0, 0, 0, seed);
+			//}
+			//// med hills
+			//{
+			//	int seed = 1337;
+			//	float scale = 10.0f;
+			//	float gain = 0.5;
+			//	float weight = 0.5;
+			//	int octaves = 6;
+			//	float lacunarity = 2.0;
+			//	auto fPerlin = FastNoise::New<FastNoise::Perlin>();
+			//	auto fScale = FastNoise::New<FastNoise::DomainScale>();
+			//	auto fNoise = FastNoise::New<FastNoise::FractalFBm>();
+			//	fScale->SetSource(fPerlin);
+			//	fScale->SetScale(scale);
+			//	fNoise->SetSource(fScale);
+			//	fNoise->SetGain(gain);
+			//	fNoise->SetWeightedStrength(weight);
+			//	fNoise->SetOctaveCount(octaves);
+			//	fNoise->SetLacunarity(lacunarity);
+			//	fNoise->GenPositionArray3D(medHillData.data(), dataSize,
+			//		xData.data(), yData.data(), zData.data(), 0, 0, 0, seed);
+			//}
+			//// low hills
+			//{
+			//	int seed = 1337;
+			//	float scale = 10.0f;
+			//	float gain = 0.5;
+			//	float weight = 0.5;
+			//	int octaves = 6;
+			//	float lacunarity = 2.0;
+			//	auto fPerlin = FastNoise::New<FastNoise::Perlin>();
+			//	auto fScale = FastNoise::New<FastNoise::DomainScale>();
+			//	auto fNoise = FastNoise::New<FastNoise::FractalFBm>();
+			//	fScale->SetSource(fPerlin);
+			//	fScale->SetScale(scale);
+			//	fNoise->SetSource(fScale);
+			//	fNoise->SetGain(gain);
+			//	fNoise->SetWeightedStrength(weight);
+			//	fNoise->SetOctaveCount(octaves);
+			//	fNoise->SetLacunarity(lacunarity);
+			//	fNoise->GenPositionArray3D(lowHillData.data(), dataSize,
+			//		xData.data(), yData.data(), zData.data(), 0, 0, 0, seed);
+			//}
+
 			std::vector<float> noiseData(dataSize);
-			fNoise->GenPositionArray3D(noiseData.data(), dataSize,
-				xData.data(), yData.data(), zData.data(), 0, 0, 0, seed);
-			for (int i = 0; i < noiseData.size(); i++) {
+			{
+				auto generator = FastNoise::New<FastNoise::Perlin>();
+				// big hills
+				auto bdomainScale = FastNoise::New<FastNoise::DomainScale>();
+				bdomainScale->SetSource(generator);
+				bdomainScale->SetScale(10);
+				auto bfractalFbm = FastNoise::New<FastNoise::FractalFBm>();
+				bfractalFbm->SetSource(bdomainScale);
+				bfractalFbm->SetGain(0.4);
+				bfractalFbm->SetWeightedStrength(0);
+				bfractalFbm->SetOctaveCount(4);
+				bfractalFbm->SetLacunarity(2.5);
+				auto bmodifierRemap = FastNoise::New<FastNoise::Remap>();
+				bmodifierRemap->SetSource(bfractalFbm);
+				bmodifierRemap->SetRemap(-1, 1, -2, 1);
+				auto bblendMaxSmooth = FastNoise::New<FastNoise::MaxSmooth>();
+				bblendMaxSmooth->SetLHS(bmodifierRemap);
+				bblendMaxSmooth->SetRHS(-0.2);
+				bblendMaxSmooth->SetSmoothness(0.1);
+
+				// med hills
+				auto mdomainScale = FastNoise::New<FastNoise::DomainScale>();
+				mdomainScale->SetSource(generator);
+				mdomainScale->SetScale(20);
+				auto mfractalFbm = FastNoise::New<FastNoise::FractalFBm>();
+				mfractalFbm->SetSource(mdomainScale);
+				mfractalFbm->SetGain(0.5);
+				mfractalFbm->SetWeightedStrength(0);
+				mfractalFbm->SetOctaveCount(4);
+				mfractalFbm->SetLacunarity(2);
+				auto mmodifierRemap = FastNoise::New<FastNoise::Remap>();
+				mmodifierRemap->SetSource(mfractalFbm);
+				mmodifierRemap->SetRemap(-1, 1, -0.2, 0.1);
+
+				// low hills
+				auto ldomainScale = FastNoise::New<FastNoise::DomainScale>();
+				ldomainScale->SetSource(generator);
+				ldomainScale->SetScale(40);
+				auto lfractalFbm = FastNoise::New<FastNoise::FractalFBm>();
+				lfractalFbm->SetSource(ldomainScale);
+				lfractalFbm->SetGain(0.5);
+				lfractalFbm->SetWeightedStrength(0);
+				lfractalFbm->SetOctaveCount(5);
+				lfractalFbm->SetLacunarity(3);
+				auto lmodifierRemap = FastNoise::New<FastNoise::Remap>();
+				lmodifierRemap->SetSource(lfractalFbm);
+				lmodifierRemap->SetRemap(-1, 1, -0.03, 0.03);
+
+				// extra noise
+				auto edomainScale = FastNoise::New<FastNoise::DomainScale>();
+				edomainScale->SetSource(generator);
+				edomainScale->SetScale(50);
+				auto efractalFbm = FastNoise::New<FastNoise::FractalFBm>();
+				efractalFbm->SetSource(edomainScale);
+				efractalFbm->SetGain(2);
+				efractalFbm->SetWeightedStrength(0);
+				efractalFbm->SetOctaveCount(5);
+				efractalFbm->SetLacunarity(3);
+				auto emodifierRemap = FastNoise::New<FastNoise::Remap>();
+				emodifierRemap->SetSource(efractalFbm);
+				emodifierRemap->SetRemap(-1, 1, -0.002, 0.002);
+
+				// combine
+				auto cAdd1 = FastNoise::New<FastNoise::Add>();
+				cAdd1->SetLHS(bblendMaxSmooth);
+				cAdd1->SetRHS(mmodifierRemap);
+				auto cAdd2 = FastNoise::New<FastNoise::Add>();
+				cAdd2->SetLHS(cAdd1);
+				cAdd2->SetRHS(lmodifierRemap);
+				auto cAdd3 = FastNoise::New<FastNoise::Add>();
+				cAdd3->SetLHS(cAdd2);
+				cAdd3->SetRHS(emodifierRemap);
+
+				cAdd3->GenPositionArray3D(noiseData.data(), dataSize,
+					xData.data(), yData.data(), zData.data(), 0, 0, 0, 1337);
+			}
+			// apply noise
+			for (int i = 0; i < dataSize; i++) {
+				//float currentNoise =
+				//	bigHillData[i] * power_bigHills +
+				//	medHillData[i] * power_medHills +
+				//	lowHillData[i] * power_lowHills;
+				//currentNoise /= power_bigHills + power_medHills + power_lowHills;
+				float currentNoise = noiseData[i];
 				glm::vec3 point = glm::vec3{ xData[i], yData[i], zData[i] };
-				point = point * m_radius + point * noiseData[i] * m_maxHeight;
+				point = point * m_radius + point * currentNoise * m_maxHeight;
 				xData[i] = point.x;
 				yData[i] = point.y;
 				zData[i] = point.z;
 			}
+			bigHillData.clear();
+			medHillData.clear();
+			lowHillData.clear();
 		}
 		// get triangle indices and normals
 		std::vector<glm::ivec3> triangles(m_nodeVertexAmount * m_nodeVertexAmount * 4);
