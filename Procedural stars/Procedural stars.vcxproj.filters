@@ -81,6 +81,18 @@
     <ClCompile Include="src\ThreadPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\TerrainFace.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TerrainPatch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TerrainTopology.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Terrain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Application.h">
@@ -158,6 +170,18 @@
     <ClInclude Include="src\ThreadPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\TerrainPatch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TerrainFace.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Terrain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TerrainTopology.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\terrain.vertex" />
@@ -172,6 +196,8 @@
     <None Include="res\shaders\terrain.tesscontrol" />
     <None Include="res\shaders\debuggeometry.vertex" />
     <None Include="res\shaders\debuggeometry.fragment" />
+    <None Include="res\shaders\test.vertex" />
+    <None Include="res\shaders\test.fragment" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="..\Dependencies\FastNoise2\bin\FastNoise.dll" />

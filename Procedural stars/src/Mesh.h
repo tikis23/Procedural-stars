@@ -24,10 +24,12 @@ public:
 	void Allocate(size_t size);
 	void* MapBuffer();
 	void UnmapBuffer();
-
+	void ClearBufferData();
+	void ClearVertexData();
 	static int VertexCount;
 private:
 	std::vector<Vertex> m_vertexData;
+	int m_drawSize;
 	unsigned int m_VAO;
 	unsigned int m_VBO;
 	bool m_buffered = false;

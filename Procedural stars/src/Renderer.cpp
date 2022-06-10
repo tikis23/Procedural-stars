@@ -7,6 +7,7 @@
 #include "Timer.h"
 #include "Debug.h"
 #include "NoiseMap.h"
+#include "Terrain.h"
 
 Renderer::Renderer(Window* window) :
     m_gbuffer(window->GetWidth(), window->GetHeight()),
@@ -31,11 +32,15 @@ Renderer::~Renderer() {
 
 void Renderer::LoadShaders() {
     Timer time;
+    //m_terrainShader.reset(new Shader);
+    //m_terrainShader->Load("res/shaders/terrain.vertex", GL_VERTEX_SHADER);
+    //m_terrainShader->Load("res/shaders/terrain.tesscontrol", GL_TESS_CONTROL_SHADER);
+    //m_terrainShader->Load("res/shaders/terrain.tesseval", GL_TESS_EVALUATION_SHADER);
+    //m_terrainShader->Load("res/shaders/terrain.fragment", GL_FRAGMENT_SHADER);
+    //m_terrainShader->Link();
     m_terrainShader.reset(new Shader);
-    m_terrainShader->Load("res/shaders/terrain.vertex", GL_VERTEX_SHADER);
-    m_terrainShader->Load("res/shaders/terrain.tesscontrol", GL_TESS_CONTROL_SHADER);
-    m_terrainShader->Load("res/shaders/terrain.tesseval", GL_TESS_EVALUATION_SHADER);
-    m_terrainShader->Load("res/shaders/terrain.fragment", GL_FRAGMENT_SHADER);
+    m_terrainShader->Load("res/shaders/test.vertex", GL_VERTEX_SHADER);
+    m_terrainShader->Load("res/shaders/test.fragment", GL_FRAGMENT_SHADER);
     m_terrainShader->Link();
 
     m_SSAOShader.reset(new Shader);
@@ -133,64 +138,59 @@ void Renderer::Draw(Camera* cam, Window* window) {
 
 
     // render each planet
-    m_gbuffer.BindWrite();
+    //m_gbuffer.BindWrite();
     m_terrainShader->Use();
-    m_terrainShader->uniformMatrix4("projection", glm::value_ptr(cam->GetProjection()));
-    m_terrainShader->uniformMatrix4("view", glm::value_ptr(cam->GetView()));
+    m_terrainShader->uniformMatrix4("projection", glm::value_ptr(cam->GetProjMatrix()));
+    m_terrainShader->uniformMatrix4("view", glm::value_ptr(cam->GetViewMatrix()));
     m_terrainShader->uniform3f("u_cameraPos", cam->GetPosition());
     m_terrainShader->uniform1i("u_showLod", m_showLod);
-    static NoiseMap noise(20, 20);
 
-    for (int i = 0; i < planets.size(); i++) {
-        planets[i].Update();
-        m_terrainShader->uniformMatrix4("model", glm::value_ptr(planets[i].GetPositionModelMatrix()));
-        noise.BindNoise(m_terrainShader.get(), "u_noise", 0);
-        planets[i].Render(cam->GetPosition(), m_terrainShader.get());
-    }
+    static Terrain terrain;
+    terrain.Update();
+    terrain.Render(m_terrainShader.get());
+    //// debug
+    //Debug::Render(glm::value_ptr(cam->GetProjection()), glm::value_ptr(cam->GetView()));
 
-    // debug
-    Debug::Render(glm::value_ptr(cam->GetProjection()), glm::value_ptr(cam->GetView()));
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    //glDisable(GL_CULL_FACE);
+    //glClearColor(0.1, 0.1, 0.1, 0);
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glDisable(GL_CULL_FACE);
-    glClearColor(0.1, 0.1, 0.1, 0);
+    //// SSAO pass
+    //m_SSAOShader->Use();
+    //m_ssaobuffer.BindWrite();
+    //m_gbuffer.BindPosition(m_SSAOShader.get(), 0);
+    //m_gbuffer.BindNormal(m_SSAOShader.get(), 1);
+    //m_ssaobuffer.BindNoise(m_SSAOShader.get(), 2);
+    //m_ssaobuffer.BindKernel(m_SSAOShader.get());
+    //m_SSAOShader->uniformMatrix4("u_projection", glm::value_ptr(cam->GetProjection()));
+    //m_SSAOShader->uniform2f("u_screen", window->GetWidth(), window->GetHeight());
+    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //screenQuad.Draw(GL_TRIANGLES);
 
-    // SSAO pass
-    m_SSAOShader->Use();
-    m_ssaobuffer.BindWrite();
-    m_gbuffer.BindPosition(m_SSAOShader.get(), 0);
-    m_gbuffer.BindNormal(m_SSAOShader.get(), 1);
-    m_ssaobuffer.BindNoise(m_SSAOShader.get(), 2);
-    m_ssaobuffer.BindKernel(m_SSAOShader.get());
-    m_SSAOShader->uniformMatrix4("u_projection", glm::value_ptr(cam->GetProjection()));
-    m_SSAOShader->uniform2f("u_screen", window->GetWidth(), window->GetHeight());
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    screenQuad.Draw(GL_TRIANGLES);
+    //// light pass
+    //auto defferedShader = m_lightingShader.get();
+    //if (Debug::LightingEnabled())
+    //    defferedShader = Debug::GetLightingShader();
+    //defferedShader->Use();
+    //m_gbuffer.BindRead();
+    //m_gbuffer.BindColor(defferedShader, 0);
+    //m_gbuffer.BindPosition(defferedShader, 1);
+    //m_gbuffer.BindNormal(defferedShader, 2);
+    //m_ssaobuffer.BindSSAO(defferedShader, 3);
+    //defferedShader->uniform3f("u_cameraPos", cam->GetPosition());
+    //defferedShader->uniform1i("u_ssao", m_ssao);
 
-    // light pass
-    auto defferedShader = m_lightingShader.get();
-    if (Debug::LightingEnabled())
-        defferedShader = Debug::GetLightingShader();
-    defferedShader->Use();
-    m_gbuffer.BindRead();
-    m_gbuffer.BindColor(defferedShader, 0);
-    m_gbuffer.BindPosition(defferedShader, 1);
-    m_gbuffer.BindNormal(defferedShader, 2);
-    m_ssaobuffer.BindSSAO(defferedShader, 3);
-    defferedShader->uniform3f("u_cameraPos", cam->GetPosition());
-    defferedShader->uniform1i("u_ssao", m_ssao);
-
-    // debug mode uniforms
-    if (Debug::LightingEnabled()) {
-        int dbgv[] = {
-            debugvars.color,
-            debugvars.normals,
-            debugvars.diffuse,
-            debugvars.specular,
-            debugvars.ssao
-        };
-        defferedShader->uniformArr1i("u_debug", 5, dbgv);
-    }
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    screenQuad.Draw(GL_TRIANGLES);
+    //// debug mode uniforms
+    //if (Debug::LightingEnabled()) {
+    //    int dbgv[] = {
+    //        debugvars.color,
+    //        debugvars.normals,
+    //        debugvars.diffuse,
+    //        debugvars.specular,
+    //        debugvars.ssao
+    //    };
+    //    defferedShader->uniformArr1i("u_debug", 5, dbgv);
+    //}
+    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //screenQuad.Draw(GL_TRIANGLES);
 }

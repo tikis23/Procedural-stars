@@ -1,50 +1,40 @@
 #pragma once
 #include "glm/glm.hpp"
 #include "Window.h"
-class Camera {
+
+class Camera
+{
 public:
+    Camera(const glm::dvec3& position = glm::dvec3(0.0, 0.0, 0.0), const glm::dmat3& orientation = glm::dmat3(1));
+    ~Camera();
 
-	struct CameraParameters {
-		float fov = 60.0f;
-		float planeNear = 0.1f;
-		float planeFar = 10000000.0f;
-	};
+    void        Update(Window* window, float aspectRatio);
+    glm::dmat3  GetOrientation() const;
+    void        SetOrientation(const glm::dmat3& orientation);
+    glm::dvec3  GetPosition() const;
+    void        SetPosition(const glm::dvec3& position);
+    void        RotateEuler(const glm::dvec3& radians);
+    void        Rotate(const glm::dmat3& orientation);
+    void        Translate(const glm::dvec3& translation);
+    glm::dvec3  GetForwardVector() const;
+    glm::dvec3  GetUpVector() const;
+    glm::dvec3  GetLeftVector() const;
+    glm::mat4&  GetViewMatrix();
+    glm::mat4&  GetProjMatrix();
 
-	Camera(CameraParameters params, glm::vec3 position, glm::vec3 rotation);
-	~Camera();
-
-	void UpdateInput(Window* window);
-
-	void SetPosition(glm::vec3 position);
-	glm::vec3 GetPosition() { return m_cam.position; };
-	void SetRotation(glm::vec3 rotation);
-	glm::vec3 GetRotation() { return m_cam.rotation; };
-
-	void Update(float aspectRatio);
-	void SetParameters(CameraParameters params);
-
-	glm::mat4& GetView() { return currentCam->view; };
-	glm::mat4& GetProjection() { return currentCam->projection; };
 private:
-	CameraParameters m_parameters;
+    bool m_freecam;
+    double m_speed;
+    double m_sensitivity;
+    double m_rollSpeed;
+    float m_fov;
+    double m_previousTime;
+    glm::vec2 m_previousMouse;
+    glm::mat4 m_view;
+    glm::mat4 m_proj;
+    glm::dmat3 m_orientation;
+    glm::dvec3 m_position;
 
-	struct CamVars {
-		glm::vec3 position;
-		glm::vec3 rotation;
-
-		glm::mat4 view;
-		glm::mat4 projection;
-		glm::vec3 front;
-		glm::vec3 up;
-	};
-	CamVars m_cam;
-	CamVars m_freecam;
-	CamVars* currentCam = &m_cam;
-	bool m_freecammode = false;
-
-	glm::vec2 m_previousMousePosition;
-	float m_previousTime;
-
-	float m_walkSpeed = 8000;
-	float m_lookSpeed = 0.15;
+    glm::dmat3 m_restoredOrientation;
+    glm::dvec3 m_restoredPosition;
 };

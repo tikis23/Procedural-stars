@@ -89,7 +89,7 @@ bool Application::Init()
 bool Application::Start()
 {
     m_running = true;
-    Camera cam({}, { -15000.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f });
+    Camera cam;
     Timer frametimer;
     int frames = 0;
     float frametime = 0;
@@ -118,8 +118,7 @@ bool Application::Start()
         }
         ImGui::End();
         if (!m_window->IsIconified()) {
-            cam.UpdateInput(m_window.get());
-            cam.Update(m_window->GetAspectRatio());
+            cam.Update(m_window.get(), m_window->GetAspectRatio());
             m_renderer->Draw(&cam, m_window.get());
         }
         if (ImGui::Begin("Settings", 0)) {

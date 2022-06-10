@@ -1,42 +1,28 @@
 #pragma once
 
-#include <vector>
 #include "glm/glm.hpp"
-#include "Mesh.h"
+#include "TerrainPatch.h"
 
-enum QUADTREE_NODETYPE {
-	QUADTREENODETYPE_NODE,
-	QUADTREENODETYPE_LEAF
-};
-struct QUADTREE_NODE {
-	int type;
-	int level;
-	int face;
-	int size;
-	int index = -1;
-	glm::vec2 localPosition;
-	glm::vec3 minPoint;
-	glm::vec3 maxPoint;
-	bool ignoreRender = false;
-	double lastRenderTime = 0;
-	Mesh* mesh = nullptr;
-	QUADTREE_NODE* parent = nullptr;
-	QUADTREE_NODE* child[4] = { nullptr };
-	QUADTREE_NODE* neighbour[4] = { nullptr };
-	int edge[4] = { 0 };
-	~QUADTREE_NODE();
+class QuadTreeNode {
+public:
+	QuadTreeNode();
+	~QuadTreeNode();
 	void Split();
 	void Merge();
-};
+	void Update();
 
-class QuadTree {
-public:
-	QuadTree();
-	QuadTree(int num_branches);
-	~QuadTree();
+	QuadTreeNode* m_parent = nullptr;
+	QuadTreeNode* m_child[4] = { nullptr };
+	QuadTreeNode* m_neighbour[4] = { nullptr };
+	TerrainPatch* m_patch = nullptr;
 
-	QUADTREE_NODE* GetBranch(int index);
-	size_t BranchAmount() { return m_branches.size(); };
-private:
-	std::vector<QUADTREE_NODE*> m_branches;
+	glm::dvec2 m_position;
+	double m_size;
+	glm::mat4 m_patchRotation;
+
+	bool m_visible;
+	unsigned int m_depth;
+	unsigned int m_quadrant;
+	glm::dvec3 m_boundingSphereCenter;
+	double m_boundingSphereRadius;
 };

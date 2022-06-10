@@ -13,8 +13,8 @@ Mesh::~Mesh() {
 void Mesh::Draw(GLenum mode) {
 	if (m_buffered) {
 		glBindVertexArray(m_VAO);
-		glDrawArrays(mode, 0, m_vertexData.size());
-		VertexCount += m_vertexData.size();
+		glDrawArrays(mode, 0, m_drawSize);
+		VertexCount += m_drawSize;
 	}
 }
 
@@ -34,6 +34,7 @@ void Mesh::Buffer() {
 	glEnableVertexAttribArray(2);
 	glVertexAttribIPointer(3, 1, GL_INT, sizeof(Vertex), (void*)offsetof(Vertex, edge));
 	glEnableVertexAttribArray(3);
+	m_drawSize = m_vertexData.size();
 	m_buffered = true;
 }
 
@@ -51,6 +52,7 @@ void Mesh::Allocate(size_t size) {
 	glEnableVertexAttribArray(2);
 	glVertexAttribIPointer(3, 1, GL_INT, sizeof(Vertex), (void*)offsetof(Vertex, edge));
 	glEnableVertexAttribArray(3);
+	m_drawSize = size;
 }
 
 void* Mesh::MapBuffer() {
@@ -61,6 +63,17 @@ void* Mesh::MapBuffer() {
 void Mesh::UnmapBuffer() {
 	glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
 	glUnmapBuffer(GL_ARRAY_BUFFER);
+}
+
+void Mesh::ClearBufferData() {
+	m_buffered = false;
+	glDeleteBuffers(1, &m_VBO);
+	glGenBuffers(1, &m_VBO);
+	m_drawSize = 0;
+}
+
+void Mesh::ClearVertexData() {
+	m_vertexData.clear();
 }
 
 int Mesh::VertexCount = 0;

@@ -3,6 +3,7 @@
 #include "Camera.h"
 #include "Window.h"
 #include "Buffer.h"
+#include "Mesh.h"
 
 class Renderer {
 public:
