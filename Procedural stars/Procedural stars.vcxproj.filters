@@ -93,6 +93,9 @@
     <ClCompile Include="src\Terrain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\FrustumCulling.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Application.h">
@@ -182,6 +185,9 @@
     <ClInclude Include="src\TerrainTopology.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\FrustumCulling.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\terrain.vertex" />
@@ -201,6 +207,5 @@
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="..\Dependencies\FastNoise2\bin\FastNoise.dll" />
-    <CopyFileToFolders Include="..\Dependencies\FastNoise2\bin\FastNoiseD.dll" />
   </ItemGroup>
 </Project>

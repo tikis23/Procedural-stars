@@ -2,18 +2,22 @@
 
 #include "glm/glm.hpp"
 #include "TerrainPatch.h"
+#include "Shader.h"
+
+#define MAX_DEPTH 14
 
 class QuadTreeNode {
 public:
 	QuadTreeNode();
 	~QuadTreeNode();
-	void Split();
-	void Merge();
-	void Update();
+	void Update(glm::dvec3 cameraPos);
+	void Render(Shader* shader);
+	void SetNeighbor(unsigned int side, QuadTreeNode* neighbor);
 
 	QuadTreeNode* m_parent = nullptr;
 	QuadTreeNode* m_child[4] = { nullptr };
-	QuadTreeNode* m_neighbour[4] = { nullptr };
+	QuadTreeNode* m_neighbor[4] = { nullptr };
+	int m_neighborDetailDifferences[4];
 	TerrainPatch* m_patch = nullptr;
 
 	glm::dvec2 m_position;
@@ -22,7 +26,19 @@ public:
 
 	bool m_visible;
 	unsigned int m_depth;
+	unsigned int m_face;
 	unsigned int m_quadrant;
 	glm::dvec3 m_boundingSphereCenter;
 	double m_boundingSphereRadius;
+	static double m_splitDistance;
+
+private:
+	bool Split();
+	void Merge();
+	bool IsLeaf()const;
+	QuadTreeNode* FindEqualOrHigherNeighbor(unsigned int side);
+	void FindNeighbor(const unsigned int side);
+	void UpdateNeighborDetail(unsigned int side);
+	unsigned int MirrorSide(const unsigned int& side);
+	unsigned int MirrorQuadrant(const unsigned int& side, const unsigned int& quadrant);
 };

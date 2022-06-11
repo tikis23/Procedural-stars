@@ -1,5 +1,5 @@
 #include "TerrainTopology.h"
-
+#include <GL/glew.h>
 TerrainTopology::TerrainTopology(unsigned int detailNorth, unsigned int detailEast, unsigned int detailSouth, unsigned int detailWest) {
     TriangleFanList triangleFans;
 
@@ -35,9 +35,13 @@ TerrainTopology::TerrainTopology(unsigned int detailNorth, unsigned int detailEa
             m_indices.push_back(triangleFans[i][j]);
         }
     }
+    glGenBuffers(1, &m_EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(unsigned short), &m_indices[0], GL_STATIC_DRAW);
 }
 
 TerrainTopology::~TerrainTopology() {
+    glDeleteBuffers(1, &m_EBO);
 }
 
 void TerrainTopology::RotateIndices(unsigned int& x, unsigned int& y, const unsigned int rotation) {

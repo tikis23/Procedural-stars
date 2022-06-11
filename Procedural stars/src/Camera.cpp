@@ -48,6 +48,8 @@ void Camera::Update(Window* window, float aspectRatio) {
                     if (m_freecam) {
                         m_restoredOrientation = m_orientation;
                         m_restoredPosition = m_position;
+                        m_restoredProj = m_proj;
+                        m_restoredView = m_view;
                     }
                     else {
                         m_orientation = m_restoredOrientation;
@@ -97,20 +99,21 @@ void Camera::Update(Window* window, float aspectRatio) {
         offset -= up;
     if (window->IsHeld(Input::KEYBOARD::SPACE))
         offset += up;
-
+    if (window->IsHeld(Input::KEYBOARD::LEFT_SHIFT))
+        offset *= 2;
     if (offset != glm::dvec3{0, 0, 0}) {
         offset = glm::normalize(offset);
-        SetPosition(GetPosition() + offset * m_speed * dt);
+        SetPosition(m_position + offset * m_speed * dt);
     }
 
 
     // update matrices
 	m_view = glm::lookAt(m_position, m_position + front, up);
-	m_proj = glm::perspective(glm::radians(m_fov), aspectRatio, 1.0f, 100000000000000.0f);
+	m_proj = glm::perspective(glm::radians(m_fov), aspectRatio, .1f, 100000000000000.0f);
 }
 
 glm::dmat3 Camera::GetOrientation() const {
-	return m_orientation;
+	return m_freecam ? m_restoredOrientation : m_orientation;
 }
 
 void Camera::SetOrientation(const glm::dmat3& orientation) {
@@ -118,7 +121,7 @@ void Camera::SetOrientation(const glm::dmat3& orientation) {
 }
 
 glm::dvec3 Camera::GetPosition() const {
-	return m_position;
+	return m_freecam ? m_restoredPosition : m_position;
 }
 
 void Camera::SetPosition(const glm::dvec3& position) {
@@ -159,4 +162,18 @@ glm::mat4& Camera::GetViewMatrix() {
 
 glm::mat4& Camera::GetProjMatrix() {
 	return m_proj;
+}
+
+glm::mat4& Camera::GetOriginalViewMatrix() {
+    if (m_freecam)
+        return m_restoredView;
+    else
+        return m_view;
+}
+
+glm::mat4& Camera::GetOriginalProjMatrix() {
+    if (m_freecam)
+        return m_restoredProj;
+    else
+        return m_proj;
 }

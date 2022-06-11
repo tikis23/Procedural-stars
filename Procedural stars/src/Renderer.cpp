@@ -8,6 +8,7 @@
 #include "Debug.h"
 #include "NoiseMap.h"
 #include "Terrain.h"
+#include "FrustumCulling.h"
 
 Renderer::Renderer(Window* window) :
     m_gbuffer(window->GetWidth(), window->GetHeight()),
@@ -136,6 +137,8 @@ void Renderer::Draw(Camera* cam, Window* window) {
     else
         glDisable(GL_CULL_FACE);
 
+    // update frustum
+    FrustumCulling::UpdateFrustum(cam->GetOriginalProjMatrix(), cam->GetOriginalViewMatrix());
 
     // render each planet
     //m_gbuffer.BindWrite();
@@ -146,7 +149,7 @@ void Renderer::Draw(Camera* cam, Window* window) {
     m_terrainShader->uniform1i("u_showLod", m_showLod);
 
     static Terrain terrain;
-    terrain.Update();
+    terrain.Update(cam->GetPosition());
     terrain.Render(m_terrainShader.get());
     //// debug
     //Debug::Render(glm::value_ptr(cam->GetProjection()), glm::value_ptr(cam->GetView()));

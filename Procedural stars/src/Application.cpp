@@ -89,7 +89,7 @@ bool Application::Init()
 bool Application::Start()
 {
     m_running = true;
-    Camera cam;
+    Camera cam({10000, 0, 0});
     Timer frametimer;
     int frames = 0;
     float frametime = 0;
