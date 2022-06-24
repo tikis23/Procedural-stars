@@ -1,6 +1,6 @@
 #include "QuadTree.h"
 #include "FrustumCulling.h"
-
+#include <format>
 #define NORTH_WEST 0
 #define NORTH_EAST 1
 #define SOUTH_EAST 2
@@ -57,8 +57,9 @@ void QuadTreeNode::Render(Shader* shader) {
 }
 
 bool QuadTreeNode::Split() {
-    if (!IsLeaf() || m_depth + 1 > MAX_DEPTH)
+    if (!IsLeaf() || m_depth + 1 > MAX_DEPTH || sm_splitsLeft == 0)
         return false;
+    sm_splitsLeft--;
     for (int i = 0; i < 4; i++) {
         m_child[i] = new QuadTreeNode;
         m_child[i]->m_parent = this;
@@ -68,12 +69,12 @@ bool QuadTreeNode::Split() {
         m_child[i]->m_depth = m_depth + 1;
         m_child[i]->m_size = 1.0 / (1 << m_child[i]->m_depth);
         if (i == NORTH_WEST)
-            m_child[i]->m_position = { m_position.x + m_child[i]->m_size, m_position.y - m_child[i]->m_size };
-        else if (i == NORTH_EAST)
             m_child[i]->m_position = { m_position.x - m_child[i]->m_size, m_position.y + m_child[i]->m_size };
-        else if (i == SOUTH_WEST)
+        else if (i == NORTH_EAST)
             m_child[i]->m_position = { m_position.x + m_child[i]->m_size, m_position.y + m_child[i]->m_size };
         else if (i == SOUTH_EAST)
+            m_child[i]->m_position = { m_position.x + m_child[i]->m_size, m_position.y - m_child[i]->m_size };
+        else if (i == SOUTH_WEST)
             m_child[i]->m_position = { m_position.x - m_child[i]->m_size, m_position.y - m_child[i]->m_size };
     }
 
@@ -83,7 +84,8 @@ bool QuadTreeNode::Split() {
     //m_child[SOUTH_EAST]->SetNeighbor(WEST , m_child[SOUTH_WEST]);
     //m_child[SOUTH_WEST]->SetNeighbor(NORTH, m_child[NORTH_WEST]);
 
-    //// Connect neighbors
+
+    // Connect neighbors
     //for (int i = 0; i < 4; i++)
     //    if (m_neighbor[i] && !m_neighbor[i]->IsLeaf())
     //        m_neighbor[i]->FindNeighbor(MirrorSide(i));
@@ -108,6 +110,7 @@ bool QuadTreeNode::IsLeaf()const {
 
 
 unsigned int QuadTreeNode::MirrorSide(const unsigned int& side) {
+    return NORTH;
     // If no neighbor; use default mirroring
     if (!m_neighbor[side])
         return MIRROR(side);
@@ -117,31 +120,184 @@ unsigned int QuadTreeNode::MirrorSide(const unsigned int& side) {
     const unsigned int f1 = m_neighbor[side]->m_face;
 
     // If within the same face or faces with equal properties
-    if (f0 == f1 || (f0 < 4 && f1 < 4))
+    if (f0 == f1)
         return MIRROR(side);
+
+    {
+        //// Source face
+        //switch (f0)
+        //{
+        //case FACE_TOP:
+        //    return MIRROR(side);
+        //    break;
+
+        //case FACE_BACK:
+        //    switch (f1)
+        //    {
+        //    case FACE_TOP:
+        //    case FACE_BOTTOM:
+        //        return MIRROR(side);
+        //        break;
+        //    case FACE_LEFT:
+        //    case FACE_RIGHT:
+        //        return NORTH;
+        //        break;
+        //    }
+        //    break;
+
+        //case FACE_BOTTOM:
+        //    switch (f1)
+        //    {
+        //    case FACE_BACK:
+        //    case FACE_FRONT:
+        //        return MIRROR(side);
+        //        break;
+        //    case FACE_LEFT:
+        //        return WEST;
+        //        break;
+        //    case FACE_RIGHT:
+        //        return EAST;
+        //        break;
+        //    }
+        //    break;
+
+        //case FACE_FRONT:
+        //    switch (f1)
+        //    {
+        //    case FACE_BOTTOM:
+        //    case FACE_TOP:
+        //        return MIRROR(side);
+        //        break;
+        //    case FACE_LEFT:
+        //    case FACE_RIGHT:
+        //        return SOUTH;
+        //        break;
+        //    }
+        //    break;
+
+        //case FACE_RIGHT:
+        //    switch (f1)
+        //    {
+        //    case FACE_TOP:
+        //        return MIRROR(side);
+        //        break;
+        //    case FACE_BACK:
+        //        return EAST;
+        //        break;
+        //    case FACE_BOTTOM:
+        //        return EAST;
+        //        break;
+        //    case FACE_FRONT:
+        //        return EAST;
+        //        break;
+        //    }
+        //    break;
+        //case FACE_LEFT:
+        //    switch (f1)
+        //    {
+        //    case FACE_TOP:
+        //        return MIRROR(side);
+        //        break;
+        //    case FACE_BACK:
+        //        return WEST;
+        //        break;
+        //    case FACE_BOTTOM:
+        //        return WEST;
+        //        break;
+        //    case FACE_FRONT:
+        //        return WEST;
+        //        break;
+        //    }
+        //    break;
+        //}
+    }
 
     // Source face
     switch (f0)
     {
-        // Top face; always end up north
     case FACE_TOP:
-        return NORTH;
-        // Source bottom; always end up south
-    case FACE_BOTTOM:
-        return SOUTH;
-    }
+        return MIRROR(side);
+        break;
 
-    // Destination face
-    switch (f1)
-    {
-        // Top face; rotate to the source face
-    case FACE_TOP:
-        return MIRROR(f0);
-        // Bottom face; rotate to the source face
-    case FACE_BOTTOM:
-        return (4 - f0) % 4;
-    }
+    case FACE_BACK:
+        switch (f1)
+        {
+        case FACE_TOP:
+        case FACE_BOTTOM:
+            return MIRROR(side);
+            break;
+        case FACE_LEFT:
+        case FACE_RIGHT:
+            return NORTH;
+            break;
+        }
+        break;
 
+    case FACE_BOTTOM:
+        switch (f1)
+        {
+        case FACE_BACK:
+        case FACE_FRONT:
+            return MIRROR(side);
+            break;
+        case FACE_LEFT:
+            return WEST;
+            break;
+        case FACE_RIGHT:
+            return EAST;
+            break;
+        }
+        break;
+
+    case FACE_FRONT:
+        switch (f1)
+        {
+        case FACE_BOTTOM:
+        case FACE_TOP:
+            return MIRROR(side);
+            break;
+        case FACE_LEFT:
+        case FACE_RIGHT:
+            return SOUTH;
+            break;
+        }
+        break;
+
+    case FACE_RIGHT:
+        switch (f1)
+        {
+        case FACE_TOP:
+            return MIRROR(side);
+            break;
+        case FACE_BACK:
+            return EAST;
+            break;
+        case FACE_BOTTOM:
+            return EAST;
+            break;
+        case FACE_FRONT:
+            return EAST;
+            break;
+        }
+        break;
+    case FACE_LEFT:
+        switch (f1)
+        {
+        case FACE_TOP:
+            return MIRROR(side);
+            break;
+        case FACE_BACK:
+            return WEST;
+            break;
+        case FACE_BOTTOM:
+            return WEST;
+            break;
+        case FACE_FRONT:
+            return WEST;
+            break;
+        }
+        break;
+    }
     return MIRROR(side);
 }
 
@@ -159,73 +315,79 @@ unsigned int QuadTreeNode::MirrorQuadrant(const unsigned int& side, const unsign
     const unsigned int f1 = m_parent->m_neighbor[side]->m_face;
 
     // If within the same face or faces with equal properties
-    if (f0 == f1 || (f0 < 4 && f1 < 4))
+    if (f0 == f1)
         return REFLECT(side, quadrant);
 
     // Source face
     switch (f0)
     {
-    case FACE_FRONT:
-        return REFLECT(side, quadrant);
-    case FACE_LEFT:
-        switch (quadrant)
-        {
-        case NORTH_EAST:
-        case SOUTH_WEST:
-            return SOUTH_WEST;
-        case NORTH_WEST:
-        case SOUTH_EAST:
-            return NORTH_WEST;
-        }
-    case FACE_BACK:
-        switch (quadrant)
-        {
-        case NORTH_EAST:
-            return NORTH_WEST;
-        case NORTH_WEST:
-            return NORTH_EAST;
-        case SOUTH_EAST:
-            return SOUTH_WEST;
-        case SOUTH_WEST:
-            return SOUTH_EAST;
-        }
-    case FACE_RIGHT:
-        switch (quadrant)
-        {
-        case NORTH_EAST:
-        case SOUTH_WEST:
-            return NORTH_EAST;
-        case NORTH_WEST:
-        case SOUTH_EAST:
-            return SOUTH_EAST;
-        }
     case FACE_TOP:
-        switch (quadrant)
+        REFLECT(side, quadrant);
+        break;
+    case FACE_BACK:
+        switch (f1)
         {
-        case NORTH_EAST:
-        case SOUTH_WEST:
-            return (side == NORTH || side == SOUTH) ? NORTH_WEST : NORTH_EAST;
-        case NORTH_WEST:
-        case SOUTH_EAST:
-            return (side == NORTH || side == SOUTH) ? NORTH_EAST : NORTH_WEST;
+        case FACE_TOP:
+        case FACE_BOTTOM:
+            REFLECT(side, quadrant);
+            break;
+        case FACE_LEFT:
+        case FACE_RIGHT:
+            return (quadrant + 1) % 4;
+            break;
         }
+        break;
     case FACE_BOTTOM:
-        switch (quadrant)
+        switch (f1)
         {
-        case NORTH_EAST:
-        case SOUTH_WEST:
-            return (side == NORTH || side == SOUTH) ? SOUTH_EAST : SOUTH_WEST;
-        case NORTH_WEST:
-        case SOUTH_EAST:
-            return (side == NORTH || side == SOUTH) ? SOUTH_WEST : SOUTH_EAST;
+        case FACE_BACK:
+        case FACE_FRONT:
+            REFLECT(side, quadrant);
+            break;
+        case FACE_LEFT:
+        case FACE_RIGHT:
+            return (quadrant + 2) % 4;
+            break;
         }
+        break;
+    case FACE_FRONT:
+        switch (f1)
+        {
+        case FACE_BOTTOM:
+        case FACE_TOP:
+            REFLECT(side, quadrant);
+            break;
+        case FACE_LEFT:
+        case FACE_RIGHT:
+            return (quadrant + 3) % 4;
+            break;
+        }
+        break;
+
+    case FACE_LEFT:
+    case FACE_RIGHT:
+        switch (f1)
+        {
+        case FACE_TOP:
+            REFLECT(side, quadrant);
+            break;
+        case FACE_BACK:
+            return (quadrant + 1) % 4;
+            break;
+        case FACE_BOTTOM:
+            return (quadrant + 2) % 4;
+            break;
+        case FACE_FRONT:
+            return (quadrant + 3) % 4;
+            break;
+        }
+        break;
     }
 
     return REFLECT(side, quadrant);
 }
 
 void QuadTreeNode::SetNeighbor(unsigned int side, QuadTreeNode* neighbor) {
-    // Connect the nodes and update neighbor detail differences
     m_neighbor[side] = neighbor;
     if (neighbor) {
         const unsigned int sideMirrored = MirrorSide(side);
@@ -237,17 +399,17 @@ void QuadTreeNode::SetNeighbor(unsigned int side, QuadTreeNode* neighbor) {
 
 QuadTreeNode* QuadTreeNode::FindEqualOrHigherNeighbor(unsigned int side) {
     // Find the youngest ancestor with a neighbor in the given direction
-    for (const QuadTreeNode* node = this; node != 0; node = node->m_parent)
+    for (const QuadTreeNode* node = this; node != 0; node = node->m_parent) {
         if (node->m_neighbor[side])
             return node->m_neighbor[side];
+    }
     return nullptr;
 }
 
 void QuadTreeNode::FindNeighbor(const unsigned int side)
 {
     // If the current node has no neighbor in the given direction, but its parent does
-    if (!m_neighbor[side] && m_parent && m_parent->m_neighbor[side])
-    {
+    if (!m_neighbor[side] && m_parent && m_parent->m_neighbor[side]) {
         // If a valid neighbor is found (child of the parent's neighbor); use it
         if (QuadTreeNode* neighbor = m_parent->m_neighbor[side]->m_child[MirrorQuadrant(side, m_quadrant)])
             SetNeighbor(side, neighbor);
@@ -277,3 +439,4 @@ void QuadTreeNode::UpdateNeighborDetail(unsigned int side) {
 }
 
 double QuadTreeNode::m_splitDistance;
+int QuadTreeNode::sm_splitsLeft;

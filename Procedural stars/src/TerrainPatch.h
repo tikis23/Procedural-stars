@@ -4,11 +4,13 @@
 #include "TerrainTopology.h"
 #include "Shader.h"
 
+#define MAP_SIZE 4
+
 class QuadTreeNode;
 
 struct TVertex {
 	glm::vec3 position;
-	glm::vec3 normal;
+	glm::vec2 texcoord;
 };
 
 class TerrainPatch {
@@ -25,7 +27,9 @@ private:
 	QuadTreeNode* m_node;
 	unsigned int m_VBO;
 	unsigned int m_VAO;
+	unsigned int m_mapTexture;
 
-	static TerrainTopology* sm_topology[MAX_DETAIL_DIFFERENCE + 1][MAX_DETAIL_DIFFERENCE + 1][MAX_DETAIL_DIFFERENCE + 1][MAX_DETAIL_DIFFERENCE + 1];
+	static bool sm_topologiesCreated;
+	static TerrainTopology* sm_topology[MAX_DETAIL_DIFFERENCE][MAX_DETAIL_DIFFERENCE][MAX_DETAIL_DIFFERENCE][MAX_DETAIL_DIFFERENCE];
 	static TerrainTopology* GetTopology(unsigned int detailNorth, unsigned int detailEast, unsigned int detailSouth, unsigned int detailWest);
 };

@@ -5,6 +5,7 @@
 #include "Shader.h"
 
 #define MAX_DEPTH 14
+#define MAX_SPLITS 4
 
 class QuadTreeNode {
 public:
@@ -31,8 +32,10 @@ public:
 	glm::dvec3 m_boundingSphereCenter;
 	double m_boundingSphereRadius;
 	static double m_splitDistance;
+	static int sm_splitsLeft;
 
 private:
+
 	bool Split();
 	void Merge();
 	bool IsLeaf()const;

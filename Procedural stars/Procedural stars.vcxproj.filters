@@ -96,6 +96,12 @@
     <ClCompile Include="src\FrustumCulling.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\TerrainNoise.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TerrainNoise.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Application.h">
@@ -204,6 +210,8 @@
     <None Include="res\shaders\debuggeometry.fragment" />
     <None Include="res\shaders\test.vertex" />
     <None Include="res\shaders\test.fragment" />
+    <None Include="res\shaders\noise.vertex" />
+    <None Include="res\shaders\noise.fragment" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="..\Dependencies\FastNoise2\bin\FastNoise.dll" />

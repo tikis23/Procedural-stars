@@ -1,17 +1,10 @@
-#version 410 core
+#version 440
 
-layout(location = 0) in vec3 in_position;
-layout(location = 1) in vec2 in_texcoord;
+layout (location = 0) out float fragColor;
 
-uniform mat4 projection;
-uniform mat4 view;
-uniform mat4 model;
-
-out float v_height;
-out vec2 v_texcoord;
+in vec3 v_pos;
 
 float simplex3d(vec3 p);
-float simplex3d_fractal(vec3 m);
 
 float fractal(vec3 p) {
 	float val = 0.9 * simplex3d(p);
@@ -29,13 +22,10 @@ float fractal(vec3 p) {
 
 void main()
 {
-	vec3 mp = normalize((model * vec4(in_position, 1)).xyz);
-	float noise = 0 * fractal(mp * 5);
-	v_height = 1;
-	vec3 pos = in_position + 500 * noise * normalize(in_position);
-	gl_Position = projection * view * model * vec4(pos, 1);
-	v_texcoord = in_texcoord;
+    float noise = fractal(v_pos);
+    fragColor = noise;
 }
+
 
 
 

@@ -76,7 +76,7 @@ void Camera::Update(Window* window, float aspectRatio) {
     glm::vec2 mousePos = window->GetMousePosition();
     if (window->IsHeld(Input::MOUSE::RIGHT)) {
         // add rotation
-        glm::vec2 offset = (m_previousMouse - mousePos) * (float)m_sensitivity * (float)dt;
+        glm::vec2 offset = (m_previousMouse - mousePos) * (float)m_sensitivity * 0.001f;
         RotateEuler({ offset.y, offset.x, 0 });
     }
     if (window->IsHeld(Input::KEYBOARD::Q))

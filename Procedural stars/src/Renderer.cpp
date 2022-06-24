@@ -123,7 +123,12 @@ void Renderer::Draw(Camera* cam, Window* window) {
         }
     }
     ImGui::End();
-    
+
+    // update frustum
+    FrustumCulling::UpdateFrustum(cam->GetOriginalProjMatrix(), cam->GetOriginalViewMatrix());
+    static Terrain terrain;
+    terrain.Update(cam->GetPosition());
+
     // debug settings
     glClearColor(0.1, 0.1, 0.1, 0);
     glEnable(GL_DEPTH_TEST);
@@ -137,8 +142,6 @@ void Renderer::Draw(Camera* cam, Window* window) {
     else
         glDisable(GL_CULL_FACE);
 
-    // update frustum
-    FrustumCulling::UpdateFrustum(cam->GetOriginalProjMatrix(), cam->GetOriginalViewMatrix());
 
     // render each planet
     //m_gbuffer.BindWrite();
@@ -148,8 +151,6 @@ void Renderer::Draw(Camera* cam, Window* window) {
     m_terrainShader->uniform3f("u_cameraPos", cam->GetPosition());
     m_terrainShader->uniform1i("u_showLod", m_showLod);
 
-    static Terrain terrain;
-    terrain.Update(cam->GetPosition());
     terrain.Render(m_terrainShader.get());
     //// debug
     //Debug::Render(glm::value_ptr(cam->GetProjection()), glm::value_ptr(cam->GetView()));

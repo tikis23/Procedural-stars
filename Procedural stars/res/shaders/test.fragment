@@ -2,7 +2,13 @@
 
 out vec4 fragColor;
 uniform vec3 color;
+uniform sampler2D u_noisemap;
+
+in float v_height;
+in vec2 v_texcoord;
 void main()
 {
-    fragColor = vec4(color, 1.0);
+    float noise = texture(u_noisemap, v_texcoord).r * 0.5 + 0.5;
+    fragColor = vec4(color * noise, 1.0);
+    //fragColor = vec4(v_texcoord.x, 0, v_texcoord.y, 1);
 }
